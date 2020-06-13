@@ -25,6 +25,7 @@ import com.omarea.shell_utils.*
 import com.omarea.store.SpfConfig
 import com.omarea.ui.FloatMonitorBatteryView
 import com.omarea.ui.FloatMonitorChartView
+import com.omarea.ui.FloatMonitorFpsView
 import com.omarea.vtools.R
 import java.util.*
 
@@ -187,6 +188,9 @@ class FloatMonitor(private val mContext: Context) {
     private var temperaturePanel: View? = null
     private var temperatureChart: FloatMonitorBatteryView? = null
     private var temperatureText: TextView? = null
+    private var fpsPanel: View? = null
+    private var fpsChart: FloatMonitorFpsView? = null
+    private var fpsText: TextView? = null
     private var batteryLevelText: TextView? = null
     private var chargerView: ImageView? = null
     private var otherInfo: TextView? = null
@@ -196,7 +200,6 @@ class FloatMonitor(private val mContext: Context) {
     private var batteryUnit = BatteryUtils()
     private val info = ActivityManager.MemoryInfo()
 
-    private var sum = -1
     private var totalMem = 0
     private var availMem = 0
     private var coreCount = -1;
@@ -252,6 +255,9 @@ class FloatMonitor(private val mContext: Context) {
             null
         }
 
+        val fpsStr = fpsUtils.currentFps
+        val showFps = fpsStr != null
+
         myHandler.post {
             if (showOtherInfo) {
                 otherInfo!!.setText("")
@@ -283,22 +289,15 @@ class FloatMonitor(private val mContext: Context) {
 
                             val otherInfos = StringBuilder("")
                             for (core in cluster) {
-                                otherInfos.append("\n")
-                                otherInfos.append("CPU")
-                                otherInfos.append(core)
-                                otherInfos.append("  ")
                                 val load = loads.get(core.toInt())
                                 if (load != null) {
                                     if (load < 10) {
-                                        otherInfos.append("0")
-                                        otherInfos.append(load.toInt())
-                                        otherInfos.append("%")
+                                        otherInfos.append("\nCPU$core  0${load.toInt()}%")
                                     } else {
-                                        otherInfos.append(load.toInt())
-                                        otherInfos.append("%")
+                                        otherInfos.append("\nCPU$core  ${load.toInt()}%")
                                     }
                                 } else {
-                                    otherInfos.append("×")
+                                    otherInfos.append("\nCPU$core  ×")
                                 }
                             }
                             otherInfo?.append(otherInfos.toString())
@@ -306,16 +305,6 @@ class FloatMonitor(private val mContext: Context) {
                         }
                     }
                     clusterIndex++
-                }
-
-                fpsUtils.currentFps?.run {
-                    otherInfo?.append("\n")
-
-                    val fpsInfo = "#FPS  " + this
-                    val fpsSpannable = SpannableString(fpsInfo);
-                    fpsSpannable.setSpan(ForegroundColorSpan(Color.WHITE), 0, fpsInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    fpsSpannable.setSpan(StyleSpan(Typeface.BOLD), 0, fpsInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    otherInfo?.append(fpsSpannable)
                 }
 
                 batteryCurrentNowMa?.run {
@@ -327,6 +316,20 @@ class FloatMonitor(private val mContext: Context) {
                         batterySpannable.setSpan(ForegroundColorSpan(Color.WHITE), 0, batteryInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                         batterySpannable.setSpan(StyleSpan(Typeface.BOLD), 0, batteryInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                         otherInfo?.append(batterySpannable)
+
+                        if (showFps) {
+                            temperatureChart!!.setData(100f, 100f - batteryStatus.level, batteryStatus.temperature)
+                            otherInfo?.append("\n")
+                            val levelStr = batteryStatus.level.toString()
+                            otherInfo?.append(levelStr + "%")
+                            if (levelStr.length < 2) {
+                                otherInfo?.append("  ")
+                            } else if (levelStr.length < 3) {
+                                otherInfo?.append(" ")
+                            }
+                            otherInfo?.append("  ")
+                            otherInfo?.append(batteryStatus.temperature.toString() + "°C ")
+                        }
                     }
                 }
             }
@@ -339,13 +342,34 @@ class FloatMonitor(private val mContext: Context) {
                 gpuChart!!.setData(100f, (100f - gpuLoad))
             }
 
-            temperatureChart!!.setData(100f, 100f - batteryStatus.level, batteryStatus.temperature)
-            temperatureText!!.setText(batteryStatus.temperature.toString() + "°C")
-            batteryLevelText!!.setText(batteryStatus.level.toString() + "%")
-            if (batteryStatus.statusText == "2") {
-                chargerView!!.visibility = View.VISIBLE
+            if (showFps) {
+                fpsStr?.run {
+                    /*
+                    otherInfo?.append("\n")
+                    val fpsInfo = "#FPS  " + this
+                    val fpsSpannable = SpannableString(fpsInfo);
+                    fpsSpannable.setSpan(ForegroundColorSpan(Color.WHITE), 0, fpsInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    fpsSpannable.setSpan(StyleSpan(Typeface.BOLD), 0, fpsInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    otherInfo?.append(fpsSpannable)
+                    */
+
+                    fpsPanel?.visibility = View.VISIBLE
+                    temperaturePanel?.visibility = View.GONE
+                    fpsText?.text = this + "FPS"
+                    try {
+                        val fps = this.toFloat()
+                        fpsChart?.setData(60f, if(fps > 60) 0f else (60f - fps));
+                    } catch (ex: java.lang.Exception) {}
+                }
             } else {
-                chargerView!!.visibility = View.GONE
+                temperatureChart!!.setData(100f, 100f - batteryStatus.level, batteryStatus.temperature)
+                temperatureText!!.setText(batteryStatus.temperature.toString() + "°C")
+                batteryLevelText!!.setText(batteryStatus.level.toString() + "%")
+                if (batteryStatus.statusText == "2") {
+                    chargerView!!.visibility = View.VISIBLE
+                } else {
+                    chargerView!!.visibility = View.GONE
+                }
             }
         }
     }
@@ -378,15 +402,19 @@ class FloatMonitor(private val mContext: Context) {
         view = LayoutInflater.from(context).inflate(R.layout.fw_monitor, null)
         gpuPanel = view!!.findViewById(R.id.fw_gpu)
         temperaturePanel = view!!.findViewById(R.id.fw_battery)
+        fpsPanel = view!!.findViewById(R.id.fw_fps)
 
         cpuChart = view!!.findViewById(R.id.fw_cpu_load)
         gpuChart = view!!.findViewById(R.id.fw_gpu_load)
         temperatureChart = view!!.findViewById(R.id.fw_battery_chart)
+        fpsChart = view!!.findViewById(R.id.fw_fps_chart)
 
         cpuFreqText = view!!.findViewById(R.id.fw_cpu_freq)
         gpuFreqText = view!!.findViewById(R.id.fw_gpu_freq)
         temperatureText = view!!.findViewById(R.id.fw_battery_temp)
         batteryLevelText = view!!.findViewById<TextView>(R.id.fw_battery_level)
+        fpsText = view!!.findViewById<TextView>(R.id.fw_fps_value)
+
         chargerView = view!!.findViewById<ImageView>(R.id.fw_charger)
         otherInfo = view!!.findViewById<TextView>(R.id.fw_other_info)
 

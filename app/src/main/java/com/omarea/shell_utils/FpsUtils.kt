@@ -10,9 +10,9 @@ class FpsUtils {
     val currentFps: String?
         get() {
             if (fpsFilePath == null) {
-                if (fileExists("/sys/class/drm/sde-crtc-0/measured_fps")) {
+                if (fileExists("/sys/class/drm/sde-crtc-0/measured_fps")) { // 骁龙855
                     fpsFilePath = "/sys/class/drm/sde-crtc-0/measured_fps"
-                } else if (fileExists("/sys/class/graphics/fb0/measured_fps")) {
+                } else if (fileExists("/sys/class/graphics/fb0/measured_fps")) { // 骁龙820
                     fpsFilePath = "/sys/class/graphics/fb0/measured_fps"
                     subStrCommand = ""
                 } else {
