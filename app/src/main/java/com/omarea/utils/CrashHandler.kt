@@ -31,7 +31,7 @@ class CrashHandler : Thread.UncaughtExceptionHandler {
                 val trace = StringWriter()
                 ex.printStackTrace(PrintWriter(trace))
                 val fileOutputStream = FileOutputStream(
-                        File(Environment.getExternalStorageDirectory().absolutePath + "/Android/vtools-error.log"))
+                        File(Environment.getExternalStorageDirectory().absolutePath + "/Android/AppData/Sence/vtools-error.log"))
                 fileOutputStream.write((ex.message + "\n\n" + trace.toString()).toByteArray(Charset.defaultCharset()))
                 fileOutputStream.flush()
                 fileOutputStream.close()

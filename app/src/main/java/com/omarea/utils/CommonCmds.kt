@@ -10,7 +10,7 @@ import com.omarea.Scene
 object CommonCmds {
     val SDCardDir: String = Environment.getExternalStorageDirectory().absolutePath
 
-    val AbsBackUpDir = "$SDCardDir/backups/apps/"
+    val AbsBackUpDir = "$SDCardDir/Android/AppData/Sence/backups/apps/"
 
     const val MountSystemRW =
             "busybox mount -o rw,remount / 2>/dev/null\n" +

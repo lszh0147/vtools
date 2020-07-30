@@ -5,10 +5,10 @@ apply plugin: 'kotlin-android-extensions'
 android {
     signingConfigs {
         omarea_Signing {
-            keyAlias 'omarea.com'
-            keyPassword 'asdf1234'
-            storeFile file('D:/omoarea.jks')
-            storePassword 'asdf1234'
+            storeFile file("TestKey.jks")
+            storePassword "123321"
+            keyAlias "Test"
+            keyPassword "123321"
         }
     }
     compileSdkVersion 30
@@ -41,12 +41,14 @@ android {
             minifyEnabled true
             debuggable false
             jniDebuggable = false
+            signingConfig signingConfigs.omarea_Signing
         }
         debug {
             // signingConfig signingConfigs.omarea_Signing
             minifyEnabled false
             debuggable true
             jniDebuggable = false
+            signingConfig signingConfigs.omarea_Signing
         }
     }
     productFlavors {
