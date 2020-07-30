@@ -22,6 +22,7 @@
         <item name="android:seekBarStyle">@style/SceneSeekBar</item>
         <item name="android:checkboxStyle">@style/SceneCheckBox</item>
         <item name="android:radioButtonStyle">@style/SceneRadioBox</item>
+        <item name="android:windowDisablePreview">true</item>
     </style>
 
     <style name="AppThemeNight" parent="Theme.AppCompat">
