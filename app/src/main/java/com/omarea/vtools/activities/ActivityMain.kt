@@ -154,7 +154,7 @@ class ActivityMain : AppCompatActivity() {
 
         tabIconHelper.newTabSpec(getString(R.string.app_nav), getDrawable(R.drawable.app_more)!!, R.id.app_more)
         tabIconHelper.newTabSpec(getString(R.string.app_home), getDrawable(R.drawable.app_home)!!, R.id.tab_home)
-        tabIconHelper.newTabSpec(getString(R.string.app_donate), getDrawable(R.drawable.app_donate)!!, R.id.app_donate)
+//        tabIconHelper.newTabSpec(getString(R.string.app_donate), getDrawable(R.drawable.app_donate)!!, R.id.app_donate)
         configlist_tabhost.setOnTabChangedListener { tabId ->
             tabIconHelper.updateHighlight()
 
@@ -168,7 +168,7 @@ class ActivityMain : AppCompatActivity() {
         if (CheckRootStatus.lastCheckResult) {
             setHomePage()
         }
-        setDonatePage()
+//        setDonatePage()
         setNavPage()
 
         if (CheckRootStatus.lastCheckResult) {
@@ -241,13 +241,13 @@ class ActivityMain : AppCompatActivity() {
     }
 
     private fun setDonatePage() {
-        val fragmentManager = supportFragmentManager
-
-        fragmentManager.fragments.clear()
-        val transaction2 = fragmentManager.beginTransaction()
-        transaction2.replace(R.id.app_donate, FragmentDonate.createPage())
-        // transaction.addToBackStack(getString(R.string.app_name))
-        transaction2.commitAllowingStateLoss()
+//        val fragmentManager = supportFragmentManager
+//
+//        fragmentManager.fragments.clear()
+//        val transaction2 = fragmentManager.beginTransaction()
+//        transaction2.replace(R.id.app_donate, FragmentDonate.createPage())
+//        // transaction.addToBackStack(getString(R.string.app_name))
+//        transaction2.commitAllowingStateLoss()
     }
 
     private fun setNotRootPage() {
