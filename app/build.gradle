@@ -35,7 +35,7 @@ android {
             zipAlignEnabled false
             debuggable false
             jniDebuggable = false
-            // signingConfig signingConfigs.omarea_Signing
+             signingConfig signingConfigs.omarea_Signing
         }
         release_mini {
             shrinkResources true
@@ -47,7 +47,7 @@ android {
             signingConfig signingConfigs.omarea_Signing
         }
         debug {
-            // signingConfig signingConfigs.omarea_Signing
+             signingConfig signingConfigs.omarea_Signing
             minifyEnabled false
             debuggable true
             jniDebuggable = false
