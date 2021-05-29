@@ -1,7 +1,6 @@
 package com.omarea.vtools.dialogs
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Context
 import android.os.*
 import android.view.LayoutInflater
@@ -16,7 +15,7 @@ import com.omarea.common.shell.AsynSuShellUnit
 import com.omarea.common.shell.KeepShell
 import com.omarea.common.shell.KeepShellPublic
 import com.omarea.common.ui.DialogHelper
-import com.omarea.model.Appinfo
+import com.omarea.model.AppInfo
 import com.omarea.utils.CommonCmds
 import com.omarea.vtools.R
 import java.io.File
@@ -26,7 +25,7 @@ import java.util.*
  * Created by helloklf on 2017/12/04.
  */
 
-open class DialogAppOptions(protected final var context: Activity, protected var apps: ArrayList<Appinfo>, protected var handler: Handler) {
+open class DialogAppOptions(protected final var context: Activity, protected var apps: ArrayList<AppInfo>, protected var handler: Handler) {
     private var allowPigz = false
     private var backupPath = CommonCmds.AbsBackUpDir
     private var userdataPath = ""
@@ -39,7 +38,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
     fun selectUserAppOptions() {
         val dialogView = context.layoutInflater.inflate(R.layout.dialog_app_options_user, null)
 
-        val dialog = DialogHelper.customDialogBlurBg(context, dialogView)
+        val dialog = DialogHelper.customDialog(context, dialogView)
         dialogView.findViewById<View>(R.id.app_options_single_only).visibility = View.GONE
         dialogView.findViewById<View>(R.id.app_options_clear).setOnClickListener {
             dialog.dismiss()
@@ -78,7 +77,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
     fun selectSystemAppOptions() {
         val dialogView = context.layoutInflater.inflate(R.layout.dialog_app_options_system, null)
 
-        val dialog = DialogHelper.customDialogBlurBg(context, dialogView)
+        val dialog = DialogHelper.customDialog(context, dialogView)
         dialogView.findViewById<View>(R.id.app_options_single_only).visibility = View.GONE
         dialogView.findViewById<View>(R.id.app_options_clear).setOnClickListener {
             dialog.dismiss()
@@ -108,19 +107,38 @@ open class DialogAppOptions(protected final var context: Activity, protected var
     }
 
     fun selectBackupOptions() {
-        AlertDialog
-                .Builder(context)
-                .setTitle("请选择操作")
-                .setCancelable(true)
-                .setItems(arrayOf("删除备份", "还原", "还原(应用)", "还原(数据)")) { _, which ->
-                    when (which) {
-                        0 -> deleteBackupAll()
-                        1 -> restoreAll(apk = true, data = true)
-                        2 -> restoreAll(apk = true, data = false)
-                        3 -> restoreAll(apk = false, data = true)
-                    }
-                }
-                .show()
+        val view = context.layoutInflater.inflate(R.layout.dialog_app_restore, null)
+        val dialog = DialogHelper.customDialog(context, view)
+        view.findViewById<View>(R.id.app_install).run {
+            setOnClickListener {
+                dialog.dismiss()
+                restoreAll(apk = true, data = false)
+            }
+        }
+
+        val dataExists = (apps.find {
+            backupDataExists(it.packageName)
+        }) != null
+
+        view.findViewById<View>(R.id.app_restore_full).run {
+            visibility = if (dataExists) View.VISIBLE else View.GONE
+            setOnClickListener {
+                dialog.dismiss()
+                restoreAll(apk = true, data = true)
+            }
+        }
+        view.findViewById<View>(R.id.app_restore_data).run {
+            visibility = if (dataExists) View.VISIBLE else View.GONE
+            setOnClickListener {
+                dialog.dismiss()
+                restoreAll(apk = false, data = true)
+            }
+        }
+        view.findViewById<View>(R.id.app_delete_backup).setOnClickListener {
+            dialog.dismiss()
+            deleteBackupAll()
+        }
+
     }
 
     private fun checkRestoreData(): Boolean {
@@ -147,7 +165,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
         val dialog = layoutInflater.inflate(R.layout.dialog_loading, null)
         val textView = (dialog.findViewById(R.id.dialog_text) as TextView)
         textView.text = "正在获取权限"
-        val alert = DialogHelper.customDialogBlurBg(context, dialog, false)
+        val alert = DialogHelper.customDialog(context, dialog, false)
         AsynSuShellUnit(ProgressHandler(dialog, alert, handler)).exec(sb.toString()).waitFor()
     }
 
@@ -186,7 +204,8 @@ open class DialogAppOptions(protected final var context: Activity, protected var
                             } catch (ex: Exception) {
                             }
                             if (error.isNotBlank()) {
-                                DialogHelper.animDialog(AlertDialog.Builder(alert.context).setTitle("出现了一些错误").setMessage(error.toString()))
+                                val context: Context = alert.context
+                                DialogHelper.alert(context, "出现了一些错误", error.toString())
                             }
                         }, 1200)
                         handler.handleMessage(handler.obtainMessage(2))
@@ -239,7 +258,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
         val view = context.layoutInflater.inflate(R.layout.dialog_app_backup_mode, null)
         view.findViewById<TextView>(R.id.confirm_message).text = "备份选中的 ${apps.size} 个应用和数据？"
 
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
         val includeData = view.findViewById<CompoundButton>(R.id.backup_include_data)
 
         // 检测数据备份功能兼容性
@@ -324,6 +343,10 @@ open class DialogAppOptions(protected final var context: Activity, protected var
         }
     }
 
+    protected fun backupDataExists(packageName: String): Boolean {
+        return File("$backupPath$packageName.tar.gz").exists()
+    }
+
     private fun _restoreAll(apk: Boolean = true, data: Boolean = true) {
         val installApkTemp = FileWrite.getPrivateFilePath(context, "app_install_cache.apk")
         checkPigz()
@@ -334,15 +357,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
         for (item in apps) {
             val packageName = item.packageName.toString()
             val apkPath = item.path.toString()
-            if (apk && File("$backupPath$packageName.apk").exists()) {
-                sb.append("echo '[install ${item.appName}]'\n")
-                // sb.append("pm install -r $backupPath$packageName.apk\n")
-
-                sb.append("rm -f $installApkTemp\n")
-                sb.append("cp \"$backupPath$packageName.apk\" $installApkTemp\n")
-                sb.append("pm install -r $installApkTemp 1> /dev/null\n")
-                sb.append("rm -f $installApkTemp\n")
-            } else if (apk && File(apkPath).exists()) {
+            if (apk && File(apkPath).exists()) {
                 sb.append("echo '[install ${item.appName}]'\n")
                 // sb.append("pm install -r \"$apkPath\" 1> /dev/null\n")
 
@@ -350,8 +365,16 @@ open class DialogAppOptions(protected final var context: Activity, protected var
                 sb.append("cp \"$apkPath\" $installApkTemp\n")
                 sb.append("pm install -r $installApkTemp 1> /dev/null\n")
                 sb.append("rm -f $installApkTemp\n")
+            } else if (apk && File("$backupPath$packageName.apk").exists()) {
+                sb.append("echo '[install ${item.appName}]'\n")
+                // sb.append("pm install -r $backupPath$packageName.apk\n")
+
+                sb.append("rm -f $installApkTemp\n")
+                sb.append("cp \"$backupPath$packageName.apk\" $installApkTemp\n")
+                sb.append("pm install -r $installApkTemp 1> /dev/null\n")
+                sb.append("rm -f $installApkTemp\n")
             }
-            if (data && File("$backupPath$packageName.tar.gz").exists()) {
+            if (data && backupDataExists(packageName)) {
                 sb.append("if [ -d $userdataPath/$packageName ]\n")
                 sb.append(" then ")
                 sb.append("echo '[restore ${item.appName}]'\n")
@@ -386,7 +409,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
      */
     protected fun modifyStateAll() {
         val view = context.layoutInflater.inflate(R.layout.dialog_app_disable_mode, null)
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
         view.findViewById<TextView>(R.id.confirm_message).text = "选中了 ${apps.size} 个应用，你希望把它们的状态改成？"
 
         val switchSuspend = view.findViewById<CompoundButton>(R.id.disable_suspend)
@@ -457,18 +480,18 @@ open class DialogAppOptions(protected final var context: Activity, protected var
      * 删除选中的应用
      */
     protected fun deleteAll() {
-        confirm("删除应用", "已选择 ${apps.size} 个应用，删除系统应用可能导致功能不正常，甚至无法开机，确定要继续删除？", Runnable {
+        confirm("删除应用", "已选择 ${apps.size} 个应用，删除系统应用可能导致功能不正常，甚至无法开机，确定要继续删除？") {
             if (isMagisk() && !MagiskExtend.moduleInstalled() && (isTmpfs("/system/app") || isTmpfs("/system/priv-app"))) {
-                DialogHelper.animDialog(AlertDialog.Builder(context)
-                        .setTitle("Magisk 副作用警告")
-                        .setMessage("检测到你正在使用Magisk作为ROOT权限管理器，并且/system/app和/system/priv-app目录已被某些模块修改，这可能导致这些目录被Magisk劫持并且无法写入！！")
-                        .setPositiveButton(R.string.btn_confirm) { _, _ ->
+                DialogHelper.confirm(context,
+                        "Magisk 副作用警告",
+                        "检测到你正在使用Magisk作为ROOT权限管理器，并且/system/app和/system/priv-app目录已被某些模块修改，这可能导致这些目录被Magisk劫持并且无法写入！！",
+                        DialogHelper.DialogButton(context.getString(R.string.btn_continue), {
                             _deleteAll()
-                        })
+                        }))
             } else {
                 _deleteAll()
             }
-        })
+        }
     }
 
     private fun _deleteAll() {
@@ -490,7 +513,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
 
                 sb.append("rm -rf $dir/oat\n")
                 sb.append("rm -rf $dir/lib\n")
-                sb.append("rm -rf ${item.path}\n")
+                sb.append("rm -rf '${item.path}'\n")
             }
         }
 
@@ -517,7 +540,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
             sb.append("echo '[delete ${item.appName}]'\n")
 
             if (item.path != null) {
-                sb.append("rm -rf ${item.path}\n")
+                sb.append("rm -rf '${item.path}'\n")
                 if (item.path == "$backupPath$packageName.apk") {
                     sb.append("rm -rf $backupPath$packageName.tar.gz\n")
                 }
@@ -538,7 +561,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
         val view = context.layoutInflater.inflate(R.layout.dialog_app_clear_mode, null)
         view.findViewById<TextView>(R.id.confirm_message).text = "确定将选中的 ${apps.size} 个应用数据清空？"
 
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
         val userOnly = view.findViewById<CompoundButton>(R.id.clear_user_only)
 
         view.findViewById<View>(R.id.btn_cancel).setOnClickListener {
@@ -585,7 +608,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
         val view = context.layoutInflater.inflate(R.layout.dialog_app_uninstall_mode, null)
         view.findViewById<TextView>(R.id.confirm_message).text = "确定卸载选中的 ${apps.size} 个应用？"
 
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
         val userOnly = view.findViewById<CompoundButton>(R.id.uninstall_user_only)
         val keepData = view.findViewById<CompoundButton>(R.id.uninstall_keep_data)
 
@@ -606,7 +629,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
         val view = context.layoutInflater.inflate(R.layout.dialog_app_uninstall_mode, null)
         view.findViewById<TextView>(R.id.confirm_message).text = "确定卸载选中的 ${apps.size} 个系统应用？"
 
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
         val userOnly = view.findViewById<CompoundButton>(R.id.uninstall_user_only)
         val keepData = view.findViewById<CompoundButton>(R.id.uninstall_keep_data)
 
@@ -684,7 +707,7 @@ open class DialogAppOptions(protected final var context: Activity, protected var
         val switchEverything = view.findViewById<CompoundButton>(R.id.dex2oat_everything)
         val switchForce = view.findViewById<CompoundButton>(R.id.dex2oat_force)
 
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
         view.findViewById<View>(R.id.btn_cancel).setOnClickListener {
             dialog.dismiss()
         }

@@ -1,12 +1,14 @@
 package com.omarea.permissions
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.Context
 import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.LayoutInflater
+import android.view.View
 import androidx.core.content.PermissionChecker
 import com.omarea.common.shell.KeepShellPublic
 import com.omarea.common.ui.DialogHelper
@@ -48,27 +50,28 @@ public class CheckRootStatus(var context: Context, private val next: Runnable? =
                 } else {
                     myHandler.post {
                         KeepShellPublic.tryExit()
-                        val builder = AlertDialog.Builder(context)
-                                .setCancelable(false)
-                                .setTitle(R.string.error_root)
-                                .setPositiveButton(R.string.btn_retry) { _, _ ->
-                                    KeepShellPublic.tryExit()
-                                    if (therad != null && therad!!.isAlive && !therad!!.isInterrupted) {
-                                        therad!!.interrupt()
-                                        therad = null
-                                    }
-                                    forceGetRoot()
+
+                        val view = LayoutInflater.from(context).inflate(R.layout.dialog_root_rejected, null)
+                        DialogHelper.customDialog(context, view, false).apply {
+                            view.findViewById<View>(R.id.btn_retry).setOnClickListener {
+                                dismiss()
+
+                                KeepShellPublic.tryExit()
+                                if (therad != null && therad!!.isAlive && !therad!!.isInterrupted) {
+                                    therad!!.interrupt()
+                                    therad = null
                                 }
-                                .setNeutralButton(R.string.btn_exit) { _, _ ->
-                                    exitProcess(0)
-                                    //android.os.Process.killProcess(android.os.Process.myPid())
+                                forceGetRoot()
+                            }
+                            view.findViewById<View>(R.id.btn_skip).setOnClickListener {
+                                dismiss()
+                                skip?.run {
+                                    myHandler.post(skip)
                                 }
-                        if (skip != null) {
-                            builder.setNegativeButton(R.string.btn_skip) { _, _ ->
-                                myHandler.post(skip)
+                                //android.os.Process.killProcess(android.os.Process.myPid())
                             }
                         }
-                        DialogHelper.animDialog(builder)
+
                     }
                 }
             }
@@ -79,21 +82,22 @@ public class CheckRootStatus(var context: Context, private val next: Runnable? =
                 if (!completed) {
                     KeepShellPublic.tryExit()
                     myHandler.post {
-                        DialogHelper.animDialog(AlertDialog.Builder(context)
-                                .setCancelable(false)
-                                .setTitle(R.string.error_root)
-                                .setMessage(R.string.error_su_timeout)
-                                .setNegativeButton(R.string.btn_retry) { _, _ ->
-                                    if (therad != null && therad!!.isAlive && !therad!!.isInterrupted) {
-                                        therad!!.interrupt()
-                                        therad = null
-                                    }
-                                    forceGetRoot()
+                        val view = LayoutInflater.from(context).inflate(R.layout.dialog_root_timeout, null)
+                        DialogHelper.customDialog(context, view, false).apply {
+                            view.findViewById<View>(R.id.btn_retry).setOnClickListener {
+                                if (therad != null && therad!!.isAlive && !therad!!.isInterrupted) {
+                                    therad!!.interrupt()
+                                    therad = null
                                 }
-                                .setNeutralButton(R.string.btn_exit) { _, _ ->
-                                    exitProcess(0)
-                                    //android.os.Process.killProcess(android.os.Process.myPid())
-                                })
+                                forceGetRoot()
+                            }
+                            view.findViewById<View>(R.id.btn_exit).setOnClickListener {
+                                dismiss()
+
+                                exitProcess(0)
+                                //android.os.Process.killProcess(android.os.Process.myPid())
+                            }
+                        }
                     }
                 }
             }.start()
@@ -111,12 +115,17 @@ public class CheckRootStatus(var context: Context, private val next: Runnable? =
                     Manifest.permission.WRITE_EXTERNAL_STORAGE,
                     Manifest.permission.CHANGE_CONFIGURATION,
                     Manifest.permission.WRITE_SECURE_SETTINGS,
-                    Manifest.permission.SYSTEM_ALERT_WINDOW
+                    Manifest.permission.SYSTEM_ALERT_WINDOW,
+                    Manifest.permission.MANAGE_EXTERNAL_STORAGE,
                     // Manifest.permission.UNINSTALL_SHORTCUT,
                     // Manifest.permission.INSTALL_SHORTCUT
             )
             requiredPermission.forEach {
-                if (it == Manifest.permission.SYSTEM_ALERT_WINDOW) {
+                if (it == Manifest.permission.MANAGE_EXTERNAL_STORAGE) {
+                    if (Build.VERSION.SDK_INT >= 30 && !Environment.isExternalStorageManager()) {
+                        cmds.append("appops set --uid ${context.packageName} MANAGE_EXTERNAL_STORAGE allow\n")
+                    }
+                } else if (it == Manifest.permission.SYSTEM_ALERT_WINDOW) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         if (!Settings.canDrawOverlays(context)) {
                             // 未允许悬浮窗

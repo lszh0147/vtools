@@ -46,13 +46,12 @@ public class SpfConfig {
 
     public static String GLOBAL_SPF = "global"; //spf
     public static String GLOBAL_SPF_AUTO_INSTALL = "is_auto_install";
+    public static String GLOBAL_SPF_HELP_ICON = "show_help_icon";
     public static String GLOBAL_SPF_SKIP_AD = "is_skip_ad";
     public static String GLOBAL_SPF_SKIP_AD_PRECISE = "is_skip_ad_precise";
-    public static String GLOBAL_SPF_SKIP_AD_DELAY = "is_skip_ad_delay";
     public static String GLOBAL_SPF_DISABLE_ENFORCE = "enforce_0";
     public static String GLOBAL_SPF_START_DELAY = "start_delay";
     public static String GLOBAL_SPF_SCENE_LOG = "scene_logview";
-    public static String GLOBAL_SPF_SCENE_CLASSIC = "classic_mode";
     public static String GLOBAL_SPF_AUTO_EXIT = "auto_exit";
     public static String GLOBAL_SPF_NIGHT_MODE = "app_night_mode";
     public static String GLOBAL_SPF_THEME = "app_theme2";
@@ -61,6 +60,7 @@ public class SpfConfig {
     public static int GLOBAL_SPF_MAC_AUTOCHANGE_MODE_1 = 1;
     public static int GLOBAL_SPF_MAC_AUTOCHANGE_MODE_2 = 2;
     public static String GLOBAL_SPF_POWERCFG_FIRST_MODE = "powercfg_first_mode";
+    public static String GLOBAL_SPF_POWERCFG_SLEEP_MODE = "powercfg_sleep_mode";
     public static String GLOBAL_SPF_DYNAMIC_CONTROL = "dynamic_control";
     public static boolean GLOBAL_SPF_DYNAMIC_CONTROL_DEFAULT = false;
     public static String GLOBAL_SPF_DYNAMIC_CONTROL_STRICT = "dynamic_control_strict";
@@ -79,6 +79,7 @@ public class SpfConfig {
     public static String GLOBAL_SPF_FREEZE_ITEM_LIMIT = "freeze_suspend_item_limit";
     public static String GLOBAL_SPF_FREEZE_XPOSED_OPEN = "freeze_xposed_open";
     public static String GLOBAL_SPF_FREEZE_CLICK_OPEN = "freeze_click_open";
+    public static String GLOBAL_NIGHT_BLACK_NOTIFICATION = "night_black_notification";
 
     public static String SWAP_SPF = "swap"; //spf
     public static String SWAP_SPF_SWAP = "swap";

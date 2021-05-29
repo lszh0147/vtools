@@ -1,7 +1,6 @@
 package com.omarea.vtools.activities
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
@@ -17,7 +16,7 @@ import com.omarea.common.ui.DialogHelper
 import com.omarea.common.ui.ProgressBarDialog
 import com.omarea.krscript.FileOwner
 import com.omarea.library.basic.UninstalledApp
-import com.omarea.model.Appinfo
+import com.omarea.model.AppInfo
 import com.omarea.ui.AppListAdapter
 import com.omarea.vtools.R
 import kotlinx.android.synthetic.main.activity_hidden_apps.*
@@ -51,9 +50,9 @@ class ActivityHiddenApps : ActivityBase() {
         hidden_app.addHeaderView(this.layoutInflater.inflate(R.layout.list_header_app, null))
     }
 
-    private fun getAppInfo(it: ApplicationInfo): Appinfo {
-        val app = Appinfo()
-        app.appName = it.loadLabel(pm)
+    private fun getAppInfo(it: ApplicationInfo): AppInfo {
+        val app = AppInfo()
+        app.appName = "" + it.loadLabel(pm)
         app.packageName = it.packageName
         app.enabled = it.enabled
         app.path = it.sourceDir
@@ -66,14 +65,14 @@ class ActivityHiddenApps : ActivityBase() {
         Thread {
             // 获得已卸载的应用（包括：隐藏的、卸载的）
             val uninstalledApp = UninstalledApp().getUninstalledApp(this)
-            val appList = ArrayList<Appinfo>()
+            val appList = ArrayList<AppInfo>()
             uninstalledApp.forEach {
                 // spf.edit().putString(it.packageName, it.loadLabel(pm).toString())
                 appList.add(getAppInfo(it))
             }
             handler.post {
                 progressBarDialog.hideDialog()
-                val adapterObj = AppListAdapter(appList)
+                val adapterObj = AppListAdapter(context, appList)
                 hidden_app.adapter = adapterObj
                 adapter = WeakReference(adapterObj)
                 hidden_app.onItemClickListener = AdapterView.OnItemClickListener { _, itemView, postion, _ ->
@@ -129,7 +128,7 @@ class ActivityHiddenApps : ActivityBase() {
                         val hasConfigChange = reInstallAppShell(items)
 
                         val uninstalledApp = UninstalledApp().getUninstalledApp(this)
-                        val fail: ArrayList<Appinfo> = ArrayList()
+                        val fail: ArrayList<AppInfo> = ArrayList()
                         for (app in uninstalledApp) {
                             val result = items.filter { it.packageName == app.packageName }
                             if (result.isNotEmpty()) {
@@ -147,15 +146,14 @@ class ActivityHiddenApps : ActivityBase() {
                                 }
 
                                 if (hasConfigChange) {
-                                    DialogHelper.animDialog(AlertDialog.Builder(this)
-                                            .setTitle("需要重启手机来恢复以下应用")
-                                            .setMessage(msg.toString())
-                                            .setPositiveButton(R.string.btn_reboot) { _, _ ->
+                                    DialogHelper.confirm(this,
+                                            "需要重启手机来恢复以下应用",
+                                            msg.toString(),
+                                            DialogHelper.DialogButton(getString(R.string.btn_reboot), {
                                                 keepShell.doCmdSync("sync\nsleep 2\nreboot")
-                                            }
-                                            .setNeutralButton(R.string.btn_not_now) { _, _ ->
-                                            }
-                                            .setCancelable(false))
+                                            }),
+                                            DialogHelper.DialogButton(getString(R.string.btn_not_now), {
+                                            }))
                                 } else {
                                     DialogHelper.helpInfo(this, "以下应用未能恢复", msg.toString())
                                 }
@@ -175,7 +173,7 @@ class ActivityHiddenApps : ActivityBase() {
     }
 
     // 重新安装应用到当前用户（修改 /data/system/users/$uid/package-restrictions.xml 也可以做到，但是需要重启）
-    private fun reInstallAppShell(apps: ArrayList<Appinfo>): Boolean {
+    private fun reInstallAppShell(apps: ArrayList<AppInfo>): Boolean {
         val uid = FileOwner(this).userId
         for (app in apps) {
             keepShell.doCmdSync("pm install-existing --user $uid ${app.packageName}")

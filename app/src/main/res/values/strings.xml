@@ -9,6 +9,9 @@
     <string name="btn_delete">删除</string>
     <string name="btn_dontshow">不再显示</string>
     <string name="btn_confirm">确定</string>
+    <string name="btn_no">否</string>
+    <string name="btn_yes">是</string>
+    <string name="btn_continue">继续</string>
     <string name="btn_modify_confirm">确认修改</string>
     <string name="btn_help">帮助</string>
     <string name="btn_iknow">知道了</string>
@@ -17,11 +20,13 @@
     <string name="btn_resume">恢复</string>
     <string name="btn_skip">跳过</string>
     <string name="btn_retry">重试</string>
+    <string name="btn_apply">应用</string>
     <string name="btn_reboot">重启</string>
     <string name="btn_resume_selected">恢复选中</string>
     <string name="error_su_timeout">等待超时，请确保你的Root管理器正在后台运行，并重试！\n\n请确保你没有阻止“授权管理器(SuperSu、Magisk Manager等)”自启动，并允许后台弹出窗口、显示悬浮窗等权限。如果一直没有弹出授权对话框，建议重启手机再试！\n</string>
 
-    <string name="error_root">抱歉，没有获取到ROOT权限，很多功能将无法使用！</string>
+    <string name="error_root">抱歉，没有获取到ROOT权限</string>
+    <string name="error_root_desc">没有ROOT权限，将失去许多特色功能。\n如果你错过了授权提示，或未看到弹窗，请找到你的ROOT管理器，手动设置允许Scene使用ROOT权限~</string>
     <string name="question_install_busybox">安装Busybox吗？</string>
     <string name="question_install_busybox_desc">你的手机似乎没有安装busybox，这会导致Scene无法使用，是否要立即安装（需要修改System）？</string>
 
@@ -29,6 +34,7 @@
     <!--<string name="feedback_link">mqqwpa://im/chat?chat_type=wpa&amp;uin=1191634433</string>-->
 
     <string name="app_name">Scene4</string>
+    <string name="app_name_short">Scene4</string>
     <string name="app_name_mode_switch">Scene-快速切换模式</string>
 
     <string name="accessibility_service_description">Scene增强服务\n你需要激活本服务，才能使用以下功能：\n\n1.动态响应（根据前台应用自动调整性能）.\n\n2.自动行为（在开关屏幕时切换网络或切换应用时回收进程）.\n\n3.自动安装（安装第三方应用时自动点击下一步）</string>
@@ -69,18 +75,21 @@
     <string name="settings_theme_wallpaper_desc">使用系统壁纸作为窗口背景，显示为半透明界面</string>
     <string name="settings_debug_layer">调试窗口</string>
     <string name="settings_debug_layer_desc">显示Scene判定前台应用过程的日志（需重启辅助服务）</string>
-    <string name="settings_classic_mode">经典模式</string>
-    <string name="settings_classic_mode_desc">场景模式使用旧版Scene(3.2以前)的前台应用检测逻辑（需重启辅助服务）</string>
+    <string name="settings_help_icon">提示图标</string>
+    <string name="settings_help_icon_desc">在功能项旁边显示功能说明提示（问号）图标</string>
     <string name="settings_auto_exit">异常时自动退出</string>
     <string name="settings_auto_exit_desc">运行过程出现异常时自动结束进程，避免卡死白屏</string>
     <string name="settings_logcat_title">错误日志</string>
     <string name="settings_logcat_desc">当Scene发生错误闪退时，点击下面的按钮通过logcat抓取日志，发送给开发者以便解决问题</string>
+    <string name="settings_black_notification">黑色通知背景</string>
+    <string name="settings_black_notification_desc">系统处于夜间模式时，将Scene的常驻通知显示为黑色背景(正常情况无需开启此选项)</string>
 
     <string name="menu_home">概况</string>
     <string name="menu_paypal">捐赠打赏</string>
     <string name="menu_scene_mode">场景模式</string>
     <string name="menu_app_scene">应用场景</string>
     <string name="menu_system_scene">系统场景</string>
+    <string name="menu_auto_click">自动点击</string>
     <string name="menu_cpu_modes">性能配置</string>
     <string name="menu_freeze">应用偏见</string>
     <string name="menu_battery_stats">耗电统计</string>
@@ -91,9 +100,12 @@
     <string name="menu_swap">SWAP设置</string>
     <string name="menu_battery">充电控制</string>
     <string name="menu_charge">充电统计</string>
+    <string name="menu_custom_command">自定义命令</string>
     <string name="menu_processes">进程管理</string>
     <string name="menu_app_magisk">Magisk助手</string>
     <string name="menu_gesture">手势导航</string>
+    <string name="menu_xposed_app">应用设置</string>
+    <string name="menu_xposed_global">全局设置</string>
     <string name="menu_filter">屏幕滤镜</string>
     <string name="menu_img">备份还原</string>
     <string name="menu_qq">吹牛扯淡</string>
@@ -163,11 +175,11 @@
     <string name="electricity_unit_adj_desc2">充电应显示为正数，放电应显示为负数</string>
 
     <string name="applist_warn">目前所提供的应用数据备份功能，需要系统集成busybox、toybox，使用tar+gz压缩数据（如果系统支持，将使用pigz提高压缩速度），仅备份 “/data/data/应用包名” 下的数据，且不保证兼容所有系统和应用。\n\n应用备份文件在 /sdcard/backups/apps（Android 11+系统不支持备份功能）</string>
-    <string name="dialog_addin_device_warn">机型信息请不要输入特殊符号！\n已兼容应用变量的机型代码，复制后重新打开此窗口即可使用！</string>
+    <string name="dialog_addin_device_warn">机型信息请不要输入特殊符号！\n已兼容【应用变量】模块的机型代码，复制后重新打开此窗口即可使用！</string>
     <string name="dialog_addin_device_desc">修改后可点击“还原”->“确认”恢复修改前的机型，卸载Scene会导致备份的机型信息丢失，请务必还原后再卸载！\n\n或者，你也可以通过重新刷入完整ROM来恢复机型信息！\n\n使用DualBootPatcher多系统软件切勿使用本功能修改机型！！！</string>
     <string name="dialog_addin_device_inner">预设模板</string>
     <string name="title_activity_shortcut">快捷启动</string>
-    <string name="title_activity_freeze">偏见应用</string>
+    <string name="title_activity_freeze">应用偏见</string>
     <string name="title_activity_online">Scene-Online</string>
 
     <string name="shortcut_disabled">暂不可用</string>
@@ -179,10 +191,6 @@
     <string name="shortcut_p3_long">性能配置-性能</string>
     <string name="shortcut_p4">极速模式</string>
     <string name="shortcut_p4_long">性能配置-极速</string>
-    <string name="power_change_default">已切换为均衡模式，适合日常使用，速度与耗电平衡！</string>
-    <string name="power_change_game">已切换为游戏（性能）模式，但受温度影响并不一定会更快，你可以考虑删除温控！</string>
-    <string name="power_change_powersave">已切换为省电模式，适合长时间媒体播放或阅读，综合使用时并不效率也不会省电太多！</string>
-    <string name="power_chagne_fast">已切换为极速模式，这会大幅增加发热，如果不删除温控性能并不稳定！</string>
     <string name="device_unsupport">该功能暂不支持您的设备！</string>
 
     <string name="addin_fullscreen_on">沉浸式体验</string>
@@ -201,7 +209,6 @@
     <string name="addin_mac_desc_2">自定义手机WIFI网卡MAC地址，仅支持部分设备，比较适合Android Q</string>
     <string name="addin_force_dex_compile">强制dex2oat编译</string>
     <string name="addin_force_dex_compile_desc">对应用进行dex2oat编译，降低运行时的CPU和RAM占用。编译过程可能需要半个小时，系统更新后需要重新编译！</string>
-    <string name="addin_dex2oat_helpinfo">在Android N以后，为了减少应用空间占用和提高安装效率，在安装应用时不再对dex进行完整编译，导致运行速度下降。本功能会通过cmd package compile命令，手动触发应用dex2oat编译。\n\n以Oreo系统下斗鱼TV客户端为例，全新安装时base.odex仅为6.8MB，编译后增大到103MB。\n\n但国内许多应用采用热更新技术，运行时经常需要从服务器下载最新代码并解析渲染，这是这些应用启动慢或启动后卡顿的主要原因。因此dex2oat编译并不能为这类应用带来明显的性能提升！</string>
     <string name="addin_dexopt_helpinfo">在Android N以后，为了减少应用空间占用和提高安装效率，在安装应用时不再对dex进行完整编译，导致运行速度下降。通过本功能选中“编译”将在安装应用时使用speed模式进行编译，安装速度显著变慢，但是运行时更加流畅(提升约20%，对游戏帧率无提升！)。\n\n以Oreo系统下斗鱼TV客户端为例，全新安装时base.odex仅为6.8MB，编译后增大到103MB。\n\n但国内许多应用采用热更新技术，运行时经常需要从服务器下载最新代码并解析渲染，这是这些应用启动慢或启动后卡顿的主要原因。因此dex2oat编译并不能为这类应用带来明显的性能提升！</string>
     <string name="addin_dex2oat_helplink">https://source.android.com/devices/tech/dalvik/jit-compiler?hl=zh-cn</string>
     <string name="addin_pm_dexopt">应用安装dex2oat策略</string>
@@ -239,7 +246,12 @@
     <string name="swap_auto_start">开机自启(要允许Scene自启动)</string>
     <string name="swap_auto_start_desc">注意：你需要允许Scene自启动，下次开机才会生效！</string>
     <string name="swap_zram_stat">ZRAM 状态</string>
-    <string name="swap_outside_module_installed">外部附加(Magisk)模块已激活</string>
+    <string name="swap_outside_module">外部附加(Magisk)模块</string>
+    <string name="swap_outside_module_desc">您已安装Magisk框架，建议使用附加模块最新版本增强SWAP控制的可靠性，附加主要作用如下：</string>
+    <string name="swap_outside_effect1">1.提高手机重启后还原ZRAM、Swapfile设置的速度</string>
+    <string name="swap_outside_effect2">2.根据设备RAM容量调整LMK参数，加强后台留存能力</string>
+    <string name="swap_outside_effect3">3.调整VM参数，提高ZRAM、Swapfile使用积极性</string>
+    <string name="swap_module_install_desc">模块下载后，请自行在Magisk Manager中刷入,并重启手机！</string>
     <string name="swap_zram_stat_desc">ZRAM的压缩率通常在20~45%之间</string>
     <string name="swap_zram_stat_format">数据压缩算法：%s\n原始数据大小：%s\n压缩后的大小：%s\n物理内存占用：%s\n最高内存占用：%s\n内存占用限制：%s\n压缩率　　　：%s</string>
     <string name="swap_zram_stat_format2">数据压缩算法：%s\n原始数据大小：%s\n压缩后的大小：%s\n压缩率　　　：%s</string>
@@ -300,6 +312,12 @@
         <item>性能模式</item>
         <item>极速模式</item>
     </string-array>
+    <string-array name="sleep_powercfg_mode_options">
+        <item>省电模式</item>
+        <item>均衡模式</item>
+        <item>性能模式</item>
+        <item>保持状态</item>
+    </string-array>
     <string-array name="powercfg_modes_filter">
         <item>全部</item>
         <item>省电</item>
@@ -317,23 +335,20 @@
 
     <string name="cgroup_mem_title">cgroup</string>
     <string-array name="cgroup_mem_options">
+        <item>系统默认</item>
         <item>普通应用</item>
-        <item>常驻后台</item>
         <item>优先内存</item>
-        <item>系统进程</item>
+        <item>重要进程</item>
+        <item>受限后台</item>
+        <item>回收内存</item>
     </string-array>
     <string-array name="cgroup_mem_values">
         <item></item>
         <item>scene_lock</item>
         <item>scene_perf</item>
         <item>scene_sys</item>
-    </string-array>
-    <string name="cgroup_mem_default">scene_def</string>
-    <string-array name="orientation_options">
-        <item>未设置</item>
-        <item></item>
-        <item></item>
-        <item>scene_sys</item>
+        <item>scene_limit</item>
+        <item>scene_limit2</item>
     </string-array>
 
     <string name="title_activity_timing_task">定时任务</string>
@@ -367,11 +382,10 @@
     <string name="scene_install_autoclick">安装点击</string>
     <string name="scene_install_autoclick_desc">安装第三方应用时，自动帮你点“下一步”和“安装”</string>
     <string name="scene_install_skip_ad">跳过广告</string>
-    <string name="scene_install_skip_ad_desc">自动点击“跳过”按钮，可帮你自动跳过一些开屏广告，但也会有误点现象</string>
+    <string name="scene_install_skip_ad_desc">自动点击“跳过”按钮，可帮你自动跳过一些开屏广告，但会降低系统性能且存在误点现象</string>
     <string name="scene_install_skip_ad_precise">跳过广告+</string>
     <string name="scene_install_skip_ad_precise_desc">使用云端记录的一些按钮数据，来点击特殊的跳过按钮</string>
-    <string name="scene_install_skip_ad_delay">延迟跳过广告</string>
-    <string name="scene_install_skip_ad_delay_desc">降低界面内容检测频率，从而减少性能消耗</string>
+    <string name="scene_install_skip_ad_warn">广告流量是一些软件开发者/商的重要收入来源，如果你的时间不是非常紧迫，那么建议您浏览并点击你喜欢的广告内容^_^</string>
     <string name="perf_opt">动态响应</string>
     <string name="permission_modify_fail">修改权限失败！</string>
     <string name="scene_need_write_sys_settings">请先授权允许Scene“修改系统设置”！</string>
@@ -383,13 +397,13 @@
     <string name="scene_appchange_action">com.omarea.vtools.SceneAppChanged</string>
     <string name="scene_create_shortcut_action">com.omarea.vtools.CreateShortcut</string>
     <string name="scene_speed_compile">com.omarea.vtools.SpeedCompile</string>
+    <string name="scene_speed_profile_compile">com.omarea.vtools.SpeedProfileCompile</string>
     <string name="scene_everything_compile">com.omarea.vtools.EverythingCompile</string>
     <string name="scene_reset_compile">com.omarea.vtools.ResetCompile</string>
 
     <string name="scene_contract_title">风险声明</string>
     <string name="scene_contract">Scene是一款面向玩机爱好者的应用，使用它需要拥有优秀的视力、阅读理解能力和良好的心态。\n\n使用过程中可能出现无法预料的错误，导致数据丢失，甚至无法正常开机。\n\n请务必不要在你[用于工作]或者存有[重要数据]的手机上使用，以免造成损失！\n\n使用过程中，务必仔细阅读提示信息谨慎操作，不要轻易拨动不理解的功能选项！\n\n此外，本应用作者不保证会提供使用帮助和故障恢复建议！</string>
     <string name="permission_float">请先为Scene授权显示悬浮窗权限！</string>
-    <string name="float_monitor_tips">悬浮窗可以拖动调整位置，单击切换展开状态，双击关闭~</string>
     <string name="lmk_optimize_desc">让Scene根据你的RAM容量，自动调整LMK参数，从而增强后台能力（可能导致低内存时卡顿）。如需恢复，请关闭该选项重启手机，如需开机后自动设置，请允许工具箱自启动</string>
     <string name="lmk_optimize">低内存优化</string>
     <string name="low_memory_killer">Low Memory Killer</string>
@@ -400,27 +414,14 @@
 
     <string name="freeze_shortcut_lost">快捷方式丢失</string>
     <string name="freeze_shortcut_lost_desc">以下被加入偏见模式的应用，启动快捷方式已丢失或未创建成功，是否立即重新创建？</string>
-    <string name="freeze_add">添加偏见应用</string>
-    <string name="freeze_apps_manage">偏好应用管理</string>
     <string name="freeze_disable_completed">已冻结应用 ×</string>
     <string name="freeze_enable_completed">已解冻应用 √</string>
     <string name="freeze_shortcut_add_success">创建完成</string>
     <string name="freeze_shortcut_add_fail">创建失败</string>
-    <string name="freeze_add_app">添加偏见</string>
+    <string name="freeze_batch_add">批量添加快捷方式</string>
     <string name="freeze_batch_add_wran">批量添加快捷方式可能会失败，你可以长按应用图标，发送单个快捷方式到桌面！</string>
-    <string name="freeze_shortcut_rebuild">向桌面添加快捷方式</string>
-    <string name="freeze_enable_all">全部解冻</string>
-    <string name="freeze_disable_all">全部冻结</string>
-    <string name="freeze_hidden_entrance">从桌面隐藏本界面入口</string>
-    <string name="freeze_show_entrance">添加本界面入口到桌面</string>
-    <string name="freeze_clear_all">清空偏见列表</string>
     <string name="freeze_entrance_changed">√ 图标显示状态已切换</string>
     <string name="freeze_shortcut_delete_desc">你可能需要手动删除已添加的快捷方式！</string>
-    <string name="freeze_open">打开</string>
-    <string name="freeze_diasble">冻结</string>
-    <string name="freeze_enable">解冻</string>
-    <string name="freeze_remove">取消偏见</string>
-    <string name="freeze_remove_uninstall">卸载应用</string>
     <string name="wallpaper_rw_permission">需要“读写本地存储”的权限才能使用系统壁纸作为软件背景</string>
 
     <string name="shortcut_create_fail">快捷方式创建失败</string>
@@ -463,7 +464,7 @@
 
     <string-array name="process_sort_modes">
         <item>按CPU</item>
-        <item>按内存</item>
+        <item>按RES</item>
         <item>按PID</item>
         <item>不排序</item>
     </string-array>
@@ -493,4 +494,5 @@
     <string name="power_recovery_cmd">sync;reboot recovery;</string>
     <string name="power_emergency_cmd">sync;reboot edl;</string>
     <string name="miui_thermal_desc">点击右上角的菜单，选择并编辑温控文件，编辑完成后点击保存~\n\n注意：随着安卓系统不断更新，要修改系统分区变得越来越困难，可能修改无法成功保存，或重启后即被自动还原，建议使用magisk模块来完成温控修改！\n\n温控文件一般是在/system/etc或/vendor/etc目录下，名称以“thermal”开头，后缀为“.conf”</string>
+    <string name="monitor_process_unsupported">进程管理器暂未兼容你的手机！</string>
 </resources>

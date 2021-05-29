@@ -39,6 +39,31 @@
         <item>com.mfashiongallery.emag</item>
         <item>com.topjohnwu.magisk</item>
         <item>com.miui.notification</item>
+        <item>com.xiaomi.gamecenter.sdk.service</item>
+    </string-array>
+    <string-array name="powercfg_powersave">
+        <item>com.ss.android.ugc.aweme</item>
+        <item>org.videolan.vlc</item>
+        <item>com.bilibili.app.in</item>
+        <item>tv.danmaku.bili</item>
+        <item>com.qiyi.video</item>
+        <item>com.qiyi.video.sdkplayer</item>
+        <item>com.tencent.qqlive</item>
+        <item>com.mxtech.videoplayer.pro</item>
+        <item>com.mxtech.videoplayer.ad</item>
+        <item>com.ss.android.ugc.aweme.lite</item>
+        <item>com.ss.android.ugc.trill</item>
+        <item>com.ss.android.ugc.live</item>
+        <item>com.smile.gifmaker</item>
+        <item>com.kuaishou.nebula</item>
+        <item>com.ss.android.article.video</item>
+        <item>com.kmxs.reader</item>
+        <item>com.qidian.QDReader</item>
+        <item>com.tencent.weread</item>
+        <item>com.dragon.read</item>
+        <item>com.chaozh.iReaderFree</item>
+        <item>com.qidian.QDReader</item>
+        <item>com.duokan.free</item>
     </string-array>
     <string-array name="powercfg_game">
         <item>com.tencent.tmgp.speedmobile</item>
@@ -59,6 +84,7 @@
         <item>com.netease.dwrg</item>
         <item>com.netease.mrzh</item>
         <item>com.netease.mrzh.aligames</item>
+        <item>com.android.camera</item>
         <item>com.miHoYo.Yuanshen</item>
     </string-array>
     <string-array name="powercfg_fast">
@@ -75,25 +101,38 @@
         <item>com.google.android.packageinstaller</item>
         <item>com.miui.backup</item>
         <item>com.ludashi.vrbench</item>
-        <item>com.android.camera</item>
         <item>com.futuremark.dmandroid.application</item>
         <item>com.miui.huanji</item>
     </string-array>
-    <string-array name="hot_game">
-        <item>com.mihoyo.bh3</item>
-        <item>com.mihoyo.bh3.mi</item>
-        <item>com.mihoyo.bh3.uc</item>
-        <item>com.miHoYo.bh3.wdj</item>
-        <item>com.tencent.tmgp.speedmobile</item>
-        <item>com.tencent.tmgp.pubgm</item>
-        <item>com.tencent.tmgp.pubgmhd</item>
-        <item>com.miHoYo.Yuanshen</item>
-        <item>com.tencent.tmgp.sgame</item>
+    <string-array name="scene_gps_on">
+        <!--饿了么-->
+        <item>me.ele</item>
+        <!--美团-->
+        <item>com.sankuai.meituan</item>
+        <item>com.tencent.map</item>
+        <item>com.baidu.BaiduMap</item>
+        <!--高德地图-->
+        <item>com.autonavi.minimap</item>
+        <!--GoFun-->
+        <item>com.gvsoft.gofun</item>
+        <!--滴滴出行-->
+        <item>com.sdu.didi.psnger</item>
+        <!--如祺出行-->
+        <item>com.ruqi.travel</item>
+        <item>com.miui.weather2</item>
+        <item>com.android.camera</item>
+        <!--玩转地铁-->
+        <item>com.hskj.palmmetro</item>
+        <!--Cellular-z-->
+        <item>make.more.r2d2.cellular_z</item>
     </string-array>
+
     <string-array name="device_templates">
         <item>Xiaomi MIX3</item>
         <item>Xiaomi CC9 Pro</item>
         <item>Xiaomi Mi 10 Pro</item>
+        <item>Xiaomi 11 Pro</item>
+        <item>Xiaomi 11 Ultra</item>
         <item>Redmi K20Pro</item>
         <item>vivo X20</item>
         <item>vivo IQOO</item>
@@ -110,6 +149,8 @@
         <item>MIX 3@Xiaomi@Xiaomi@perseus@perseus</item>
         <item>MI CC9 Pro@Xiaomi@Xiaomi@tucana@tucana</item>
         <item>Mi 10 Pro@Xiaomi@Xiaomi@cmi@cmi</item>
+        <item>M2102K1AC@Xiaomi@Xiaomi@mars@mars</item>
+        <item>M2102K1C@Xiaomi@Xiaomi@Star@Star</item>
         <item>Redmi K20 Pro@Xiaomi@Xiaomi@raphael@raphael</item>
         <item>vivo X20@vivo@vivo@X20@X20</item>
         <item>v1824a@vivo@vivo@v1824a@v1824a</item>
@@ -147,4 +188,7 @@
         <!--百度贴吧-->
         <item>com.baidu.tieba:id/splash_ad_btn_skip</item>
     </string-array>
+
+    <string name="swap_module_target_version">2700</string>
+    <string name="swap_module_download_url">https://vtools.oss-cn-beijing.aliyuncs.com/addin/swap-controller-2.7.0.zip</string>
 </resources>

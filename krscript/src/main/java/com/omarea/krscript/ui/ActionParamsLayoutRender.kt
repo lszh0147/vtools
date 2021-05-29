@@ -1,38 +1,37 @@
 package com.omarea.krscript.ui
 
-import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
+import androidx.fragment.app.FragmentActivity
+import com.omarea.common.model.SelectItem
 import com.omarea.krscript.R
-import com.omarea.krscript.executor.ScriptEnvironmen
 import com.omarea.krscript.model.ActionParamInfo
-import com.omarea.krscript.model.ParamInfoFilter
 
-class ActionParamsLayoutRender {
+class ActionParamsLayoutRender(private var linearLayout: LinearLayout, activity: FragmentActivity) {
     companion object {
         /**
          * 获取当前选中项索引（单选）
          * @param ActionParamInfo actionParamInfo 参数信息
          * @param ArrayList<HashMap<String, Any>> options 使用getParamOptions获得的数据（不为空时）
          */
-        fun getParamOptionsCurrentIndex(actionParamInfo: ActionParamInfo, options: ArrayList<HashMap<String, Any>>): Int {
+        fun getParamOptionsCurrentIndex(actionParamInfo: ActionParamInfo, options: ArrayList<SelectItem>): Int {
             var selectedIndex = -1
-            var index = 0
 
             val valList = ArrayList<String>()
             if (actionParamInfo.valueFromShell != null)
                 valList.add(actionParamInfo.valueFromShell!!)
+            // TODO:这里可能有点争议
             if (actionParamInfo.value != null) {
                 valList.add(actionParamInfo.value!!)
             }
             if (valList.size > 0) {
                 for (j in valList.indices) {
+                    var index = 0
                     for (option in options) {
-                        if ((option["item"] as ActionParamInfo.ActionParamOption).value == valList[j]) {
+                        if (option.value == valList[j]) {
                             selectedIndex = index
                             break
                         }
@@ -50,27 +49,41 @@ class ActionParamsLayoutRender {
          * @param ActionParamInfo actionParamInfo 参数信息
          * @param ArrayList<HashMap<String, Any>> options 使用getParamOptions获得的数据（不为空时）
          */
-        fun getParamOptionsSelectedStatus(actionParamInfo: ActionParamInfo, options: ArrayList<HashMap<String, Any>>): BooleanArray {
+        fun getParamOptionsSelectedStatus(actionParamInfo: ActionParamInfo, options: ArrayList<SelectItem>): BooleanArray {
             val status = BooleanArray(options.size)
-            val value = if (actionParamInfo.valueFromShell != null) actionParamInfo.valueFromShell else actionParamInfo.value
-            val values = value?.split(actionParamInfo.separator)
+            val values = getParamValues(actionParamInfo)
 
             for (index in 0 until options.size) {
-                val item = options[index]["item"]
-                val option = item as ActionParamInfo.ActionParamOption
+                val option = options[index]
                 status[index] = (values != null && values.contains(option.value))
             }
             return status
         }
+
+        /**
+         * 设置列表的选中状态
+         * @param ActionParamInfo actionParamInfo 参数信息
+         * @param ArrayList<HashMap<String, Any>> options 使用getParamOptions获得的数据（不为空时）
+         */
+        fun setParamOptionsSelectedStatus(actionParamInfo: ActionParamInfo, options: ArrayList<SelectItem>): ArrayList<SelectItem> {
+            val values = getParamValues(actionParamInfo)
+
+            for (index in 0 until options.size) {
+                val option = options[index]
+                options[index].selected = (values != null && values.contains(option.value))
+            }
+            return options
+        }
+
+        // 获取多选下拉的选中值列表
+        fun getParamValues (actionParamInfo: ActionParamInfo): List<String>? {
+            val value = if (actionParamInfo.valueFromShell != null) actionParamInfo.valueFromShell else actionParamInfo.value
+            val values = value?.split(actionParamInfo.separator)
+            return values
+        }
     }
 
-    private var linearLayout: LinearLayout
-    private var context: Context
-
-    constructor(linearLayout: LinearLayout) {
-        this.linearLayout = linearLayout
-        this.context = linearLayout.context
-    }
+    private var context: FragmentActivity = activity
 
     fun renderList(actionParamInfos: ArrayList<ActionParamInfo>, fileChooser: ParamsFileChooserRender.FileChooserInterface?) {
         for (actionParamInfo in actionParamInfos) {
@@ -79,96 +92,53 @@ class ActionParamsLayoutRender {
             if (options != null && !(actionParamInfo.type == "app" || actionParamInfo.type == "packages")) {
                 if (actionParamInfo.multiple) {
                     val view = ParamsMultipleSelect(actionParamInfo, context).render()
-                    addToLayout(view, actionParamInfo, false)
+                    addToLayout(view, actionParamInfo)
                 } else {
-                    val spinner = Spinner(context)
-                    val selectedIndex = getParamOptionsCurrentIndex(actionParamInfo, options) // 获取当前选中项索引
-
-                    spinner.adapter = SimpleAdapter(context, options, R.layout.kr_simple_text_list_item, arrayOf("title"), intArrayOf(R.id.text))
-                    spinner.isEnabled = !actionParamInfo.readonly
-
-                    addToLayout(spinner, actionParamInfo)
-                    if (selectedIndex > -1 && selectedIndex < options.size) {
-                        spinner.setSelection(selectedIndex)
-                    }
+                    addToLayout(ParamsSingleSelect(actionParamInfo, context).render(), actionParamInfo)
                 }
             }
             // 选择框渲染
             else if (actionParamInfo.type == "bool" || actionParamInfo.type == "checkbox") {
-                addToLayout(CheckBox(context).apply {
-                    isChecked = getCheckState(actionParamInfo, false)
-                    isEnabled = !actionParamInfo.readonly
-                    if (!actionParamInfo.label.isNullOrEmpty()) {
-                        text = actionParamInfo.label
-                    }
-                }, actionParamInfo)
+                addToLayout(ParamsCheckbox(actionParamInfo, context).render(), actionParamInfo)
             }
             // 开关渲染
             else if (actionParamInfo.type == "switch") {
-                val switch = Switch(context)
-                switch.isChecked = getCheckState(actionParamInfo, false)
-                switch.isEnabled = !actionParamInfo.readonly
-                if (!actionParamInfo.label.isNullOrEmpty()) {
-                    switch.text = actionParamInfo.label
-                }
-                switch.setPadding(dp2px(context, 8f), 0, 0, 0)
-                addToLayout(switch, actionParamInfo)
+                addToLayout(ParamsSwitch(actionParamInfo, context).render(), actionParamInfo)
             }
             // 滑块
             else if (actionParamInfo.type == "seekbar") {
-                val layout = SeekBarRender(actionParamInfo, context).render()
+                val layout = ParamsSeekBar(actionParamInfo, context).render()
 
-                addToLayout(layout, actionParamInfo, false)
+                addToLayout(layout, actionParamInfo)
             }
             // 文件选择
             else if (actionParamInfo.type == "file" || actionParamInfo.type == "folder") {
                 val layout = ParamsFileChooserRender(actionParamInfo, context, fileChooser).render()
 
-                addToLayout(layout, actionParamInfo, false)
+                addToLayout(layout, actionParamInfo)
             }
             // 应用选择
             else if (actionParamInfo.type == "app" || actionParamInfo.type == "packages") {
                 val layout = ParamsAppChooserRender(actionParamInfo, context).render()
 
-                addToLayout(layout, actionParamInfo, false)
+                addToLayout(layout, actionParamInfo)
             }
             // 颜色输入
             else if (actionParamInfo.type == "color") {
                 val layout = ParamsColorPicker(actionParamInfo, context).render()
 
-                addToLayout(layout, actionParamInfo, false)
+                addToLayout(layout, actionParamInfo)
             }
             // 文本框渲染
             else {
-                val editText = EditText(context)
-                if (actionParamInfo.valueFromShell != null)
-                    editText.setText(actionParamInfo.valueFromShell)
-                else if (actionParamInfo.value != null)
-                    editText.setText(actionParamInfo.value)
-                editText.background = ColorDrawable(Color.TRANSPARENT)
-                editText.filters = arrayOf(ParamInfoFilter(actionParamInfo))
-                editText.isEnabled = !actionParamInfo.readonly
-                editText.setPadding(dp2px(context, 8f), 0, dp2px(context, 8f), 0)
-                if (actionParamInfo.placeholder.isNotEmpty()) {
-                    editText.hint = actionParamInfo.placeholder
-                } else if (
-                        (actionParamInfo.type == "int" || actionParamInfo.type == "number")
-                        &&
-                        (actionParamInfo.min != Int.MIN_VALUE || actionParamInfo.max != Int.MAX_VALUE)
-                ) {
-                    editText.hint = "${actionParamInfo.min} ~ ${actionParamInfo.max}"
-                }
-
-                addToLayout(editText, actionParamInfo)
+                addToLayout(ParamsEditText(actionParamInfo, context).render(), actionParamInfo)
             }
         }
     }
 
-    private fun addToLayout(inputView: View, actionParamInfo: ActionParamInfo, setTag: Boolean = true) {
-        if (setTag) {
-            inputView.tag = actionParamInfo.name
-        }
-
+    // 隐藏label的参数类型
+    private val hideLabelTypes = arrayOf("bool", "checkbox", "switch")
+    private fun addToLayout(inputView: View, actionParamInfo: ActionParamInfo) {
         val layout = LayoutInflater.from(context).inflate(R.layout.kr_param_row, null)
         if (!actionParamInfo.title.isNullOrEmpty()) {
             layout.findViewById<TextView>(R.id.kr_param_title).text = actionParamInfo.title
@@ -176,11 +146,14 @@ class ActionParamsLayoutRender {
             layout.findViewById<TextView>(R.id.kr_param_title).visibility = View.GONE
         }
 
-        if (!actionParamInfo.label.isNullOrEmpty() && (actionParamInfo.type != "bool" && actionParamInfo.type != "checkbox" && actionParamInfo.type != "switch")) {
-            layout.findViewById<TextView>(R.id.kr_param_label).text = actionParamInfo.label
+        if ((!actionParamInfo.label.isNullOrEmpty()) && !hideLabelTypes.contains(actionParamInfo.type)) {
+            layout.findViewById<TextView>(R.id.kr_param_label).run {
+                text = actionParamInfo.label
+            }
         } else {
             layout.findViewById<TextView>(R.id.kr_param_label).visibility = View.GONE
         }
+
 
         if (!actionParamInfo.desc.isNullOrEmpty()) {
             layout.findViewById<TextView>(R.id.kr_param_desc).text = actionParamInfo.desc
@@ -256,9 +229,8 @@ class ActionParamsLayoutRender {
             } else if (view is Spinner) {
                 val item = view.selectedItem
                 when {
-                    item is HashMap<*, *> -> {
-                        val opt = item["item"] as ActionParamInfo.ActionParamOption
-                        actionParamInfo.value = opt.value
+                    item is SelectItem -> {
+                        actionParamInfo.value = item.value
                     }
                     item != null -> actionParamInfo.value = item.toString()
                     else -> actionParamInfo.value = ""
@@ -292,25 +264,5 @@ class ActionParamsLayoutRender {
                 // TODO:刷新界面显示
             }
         }
-    }
-
-    /**
-     * 获取选中状态
-     */
-    private fun getCheckState(actionParamInfo: ActionParamInfo, defaultValue: Boolean): Boolean {
-        if (actionParamInfo.valueFromShell != null) {
-            return actionParamInfo.valueFromShell == "1" || actionParamInfo.valueFromShell!!.toLowerCase() == "true"
-        } else if (actionParamInfo.value != null) {
-            return actionParamInfo.value == "1" || actionParamInfo.value!!.toLowerCase() == "true"
-        }
-        return defaultValue
-    }
-
-    /**
-     * dp转换成px
-     */
-    private fun dp2px(context: Context, dpValue: Float): Int {
-        val scale = context.resources.displayMetrics.density
-        return (dpValue * scale + 0.5f).toInt()
     }
 }

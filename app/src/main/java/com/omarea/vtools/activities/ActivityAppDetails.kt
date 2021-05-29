@@ -1,25 +1,22 @@
 package com.omarea.vtools.activities
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
-import android.content.*
-import android.content.pm.ActivityInfo
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageInfo
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.IBinder
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.*
+import android.widget.Checkable
+import android.widget.Switch
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
-import com.omarea.common.shared.FileWrite
-import com.omarea.common.shell.KeepShellPublic
 import com.omarea.common.ui.DialogHelper
-import com.omarea.library.basic.RadioGroupSimulator
 import com.omarea.library.permissions.NotificationListener
 import com.omarea.library.shell.CGroupMemoryUtlis
 import com.omarea.model.SceneConfigInfo
@@ -29,20 +26,13 @@ import com.omarea.scene_mode.ModeSwitcher
 import com.omarea.scene_mode.SceneMode
 import com.omarea.store.SceneConfigStore
 import com.omarea.store.SpfConfig
-import com.omarea.ui.IntInputFilter
-import com.omarea.ui.SceneModeAdapter
 import com.omarea.utils.AccessibleServiceHelper
-import com.omarea.vaddin.IAppConfigAidlInterface
 import com.omarea.vtools.R
 import com.omarea.vtools.dialogs.DialogAppBoostPolicy
 import com.omarea.vtools.dialogs.DialogAppCGroupMem
 import com.omarea.vtools.dialogs.DialogAppOrientation
 import com.omarea.vtools.dialogs.DialogAppPowerConfig
-import com.omarea.xposed.XposedCheck
 import kotlinx.android.synthetic.main.activity_app_details.*
-import kotlinx.android.synthetic.main.list_item_text.view.*
-import org.json.JSONObject
-import java.io.File
 
 class ActivityAppDetails : ActivityBase() {
     var app = ""
@@ -50,199 +40,9 @@ class ActivityAppDetails : ActivityBase() {
     lateinit var sceneConfigInfo: SceneConfigInfo
     private var dynamicCpu: Boolean = false
     private var _result = RESULT_CANCELED
-    private var vAddinsInstalled = false
-    private var aidlConn: IAppConfigAidlInterface? = null
     private lateinit var sceneBlackList: SharedPreferences
     private lateinit var spfGlobal: SharedPreferences
     private var needKeyCapture = false
-
-    fun getAddinVersion(): Int {
-        var code = 0
-        try {
-            val manager = getPackageManager()
-            val info = manager.getPackageInfo("com.omarea.vaddin", 0)
-            code = info.versionCode
-        } catch (e: PackageManager.NameNotFoundException) {
-            e.printStackTrace()
-        }
-
-        return code
-    }
-
-    fun getAddinMinimumVersion(): Int {
-        return resources.getInteger(R.integer.addin_minimum_version)
-    }
-
-    private var conn = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            aidlConn = IAppConfigAidlInterface.Stub.asInterface(service)
-            updateXposedConfigFromAddin()
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            aidlConn = null
-        }
-    }
-
-    private fun updateXposedConfigFromAddin() {
-        if (aidlConn != null) {
-            try {
-                if (getAddinMinimumVersion() > getAddinVersion()) {
-                    // TODO:自动安装
-                    Toast.makeText(applicationContext, getString(R.string.scene_addin_version_toolow), Toast.LENGTH_SHORT).show()
-                    if (aidlConn != null) {
-                        unbindService(conn)
-                        aidlConn = null
-                    }
-                    installVAddin()
-                } else {
-                    val configJson = aidlConn!!.getAppConfig(app)
-                    val config = JSONObject(configJson)
-                    for (key in config.keys()) {
-                        when (key) {
-                            "dpi" -> {
-                                sceneConfigInfo.dpi = config.getInt(key)
-                            }
-                            "excludeRecent" -> {
-                                sceneConfigInfo.excludeRecent = config.getBoolean(key)
-                            }
-                            "smoothScroll" -> {
-                                sceneConfigInfo.smoothScroll = config.getBoolean(key)
-                            }
-                        }
-                    }
-                    app_details_scrollopt.isChecked = sceneConfigInfo.smoothScroll
-                    app_details_excludetask.isChecked = sceneConfigInfo.excludeRecent
-                    if (sceneConfigInfo.dpi >= 96) {
-                        app_details_dpi.text = sceneConfigInfo.dpi.toString()
-                    } else {
-                        app_details_dpi.text = "默认"
-                    }
-                    app_details_hide_su.isChecked = aidlConn!!.getBooleanValue("com.android.systemui_hide_su", false)
-                    app_details_webview_debug.isChecked = aidlConn!!.getBooleanValue("android_webdebug", false)
-                    app_details_service_running.isChecked = aidlConn!!.getBooleanValue("android_dis_service_foreground", false)
-                }
-            } catch (ex: Exception) {
-                Toast.makeText(applicationContext, getString(R.string.scene_addin_sync_fail), Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    /**
-     * 安装插件
-     */
-    private fun installVAddin() {
-        val addin = "addin/xposed-addin.apk"
-        // 解压应用内部集成的插件文件
-        val addinPath = com.omarea.common.shared.FileWrite.writePrivateFile(assets, addin, "addin/xposed-addin.apk", this)
-
-        // 如果应用内部集成的插件文件获取失败
-        if (addinPath == null) {
-            Toast.makeText(applicationContext, getString(R.string.scene_addin_miss), Toast.LENGTH_SHORT).show()
-            return
-        }
-        try {
-            // 判断应用内部集成的插件文件是否和应用版本匹配（不匹配则取消安装）
-            if (packageManager.getPackageArchiveInfo(addinPath, PackageManager.GET_ACTIVITIES)!!.versionCode < getAddinMinimumVersion()) {
-                Toast.makeText(applicationContext, getString(R.string.scene_inner_addin_invalid), Toast.LENGTH_SHORT).show()
-                return
-            }
-        } catch (ex: Exception) {
-            // 异常
-            Toast.makeText(applicationContext, getString(R.string.scene_addin_install_fail), Toast.LENGTH_SHORT).show()
-            return
-        }
-        Toast.makeText(applicationContext, getString(R.string.scene_addin_installing), Toast.LENGTH_SHORT).show()
-        //使用ROOT权限安装插件
-        val installResult = KeepShellPublic.doCmdSync("pm install -r '$addinPath'")
-        // 如果使用ROOT权限自动安装成功（再次检查Xposed状态）
-        if (installResult !== "error" && installResult.contains("Success") && getAddinVersion() >= getAddinMinimumVersion()) {
-            Toast.makeText(applicationContext, getString(R.string.scene_addin_installed), Toast.LENGTH_SHORT).show()
-            checkXposedState(false)
-        } else {
-            // 让用户手动安装
-            try {
-                val apk = FileWrite.writeFile(applicationContext, addin, true)
-
-                val intent = Intent(Intent.ACTION_VIEW)
-                intent.setDataAndType(Uri.fromFile(File((if (apk != null) apk else addinPath))), "application/vnd.android.package-archive");
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-            } catch (ex: Exception) {
-                Toast.makeText(applicationContext, getString(R.string.scene_addin_install_fail), Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun bindService() {
-        tryUnBindAddin()
-        try {
-            val intent = Intent();
-            //绑定服务端的service
-            intent.setAction("com.omarea.vaddin.ConfigUpdateService");
-            //新版本（5.0后）必须显式intent启动 绑定服务
-            intent.setComponent(ComponentName("com.omarea.vaddin", "com.omarea.vaddin.ConfigUpdateService"));
-            //绑定的时候服务端自动创建
-            if (bindService(intent, conn, Context.BIND_AUTO_CREATE)) {
-            } else {
-                throw Exception("")
-            }
-        } catch (ex: Exception) {
-            Toast.makeText(applicationContext, "连接到“Scene-高级设定”插件失败，请不要阻止插件自启动！", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun tryUnBindAddin() {
-        try {
-            if (aidlConn != null) {
-                unbindService(conn)
-                aidlConn = null
-            }
-        } catch (ex: Exception) {
-
-        }
-    }
-
-    /**
-     * 检查Xposed状态
-     */
-    private fun checkXposedState(autoUpdate: Boolean = true) {
-        var allowXposedConfig = XposedCheck.xposedIsRunning()
-        app_details_vaddins_notactive.visibility = if (allowXposedConfig) View.GONE else View.VISIBLE
-        try {
-            vAddinsInstalled = packageManager.getPackageInfo("com.omarea.vaddin", 0) != null
-            allowXposedConfig = allowXposedConfig && vAddinsInstalled
-        } catch (ex: Exception) {
-            vAddinsInstalled = false
-        }
-        app_details_vaddins_notinstall.setOnClickListener {
-            installVAddin()
-        }
-        if (vAddinsInstalled && getAddinVersion() < getAddinMinimumVersion()) {
-            // 版本过低（更新插件）
-            if (autoUpdate) {
-                installVAddin()
-            }
-        } else if (vAddinsInstalled) {
-            // 已安装（获取配置）
-            app_details_vaddins_notinstall.visibility = View.GONE
-            if (aidlConn == null) {
-                bindService()
-            } else {
-                updateXposedConfigFromAddin()
-            }
-        } else {
-            // 未安装（显示未安装）
-            app_details_vaddins_notinstall.visibility = View.VISIBLE
-        }
-        app_details_vaddins_notactive.visibility = if (XposedCheck.xposedIsRunning()) View.GONE else View.VISIBLE
-        app_details_dpi.isEnabled = allowXposedConfig
-        app_details_excludetask.isEnabled = allowXposedConfig
-        app_details_scrollopt.isEnabled = allowXposedConfig
-        app_details_hide_su.isEnabled = allowXposedConfig
-        app_details_webview_debug.isEnabled = allowXposedConfig
-        app_details_service_running.isEnabled = allowXposedConfig
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -313,7 +113,7 @@ class ActivityAppDetails : ActivityBase() {
 
             DialogAppPowerConfig(this,
                     spfPowercfg.getString(app, ""),
-                    object : DialogAppPowerConfig.IResultCallback{
+                    object : DialogAppPowerConfig.IResultCallback {
                         override fun onChange(mode: String?) {
                             spfPowercfg.edit().run {
                                 if (mode.isNullOrEmpty()) {
@@ -454,16 +254,6 @@ class ActivityAppDetails : ActivityBase() {
             }
             sceneConfigInfo.aloneLight = (it as Switch).isChecked
         }
-        // TODO: 输入DPI
-        if (sceneConfigInfo.dpi >= 96) {
-            app_details_dpi.text = sceneConfigInfo.dpi.toString()
-        }
-        app_details_excludetask.setOnClickListener {
-            sceneConfigInfo.excludeRecent = (it as Switch).isChecked
-        }
-        app_details_scrollopt.setOnClickListener {
-            sceneConfigInfo.smoothScroll = (it as Switch).isChecked
-        }
         app_details_gps.setOnClickListener {
             sceneConfigInfo.gpsOn = (it as Switch).isChecked
         }
@@ -475,65 +265,19 @@ class ActivityAppDetails : ActivityBase() {
             }
         }
 
-        if (XposedCheck.xposedIsRunning()) {
-            if (sceneConfigInfo.dpi >= 96) {
-                app_details_dpi.text = sceneConfigInfo.dpi.toString()
-            } else {
-                app_details_dpi.text = "默认"
-            }
-            app_details_dpi.setOnClickListener {
-                var dialog: AlertDialog? = null
-                val view = layoutInflater.inflate(R.layout.dialog_dpi_input, null)
-                val inputDpi = view.findViewById<EditText>(R.id.input_dpi)
-                inputDpi.setFilters(arrayOf(IntInputFilter()));
-                if (sceneConfigInfo.dpi >= 96) {
-                    inputDpi.setText(sceneConfigInfo.dpi.toString())
-                }
-                view.findViewById<Button>(R.id.btn_confirm).setOnClickListener {
-                    val dpiText = inputDpi.text.toString()
-                    if (dpiText.isEmpty()) {
-                        sceneConfigInfo.dpi = 0
-                        return@setOnClickListener
-                    } else {
-                        try {
-                            val dpi = dpiText.toInt()
-                            if (dpi < 96 && dpi != 0) {
-                                Toast.makeText(applicationContext, "DPI的值必须大于96", Toast.LENGTH_SHORT).show()
-                                return@setOnClickListener
-                            }
-                            sceneConfigInfo.dpi = dpi
-                            if (dpi == 0) {
-                                app_details_dpi.text = "默认"
-                            } else
-                                app_details_dpi.text = dpi.toString()
-                        } catch (ex: Exception) {
-
-                        }
-                    }
-                    if (dialog != null) {
-                        dialog!!.dismiss()
-                    }
-                }
-                view.findViewById<Button>(R.id.btn_cancel).setOnClickListener {
-                    if (dialog != null) {
-                        dialog!!.dismiss()
-                    }
-                }
-                dialog = AlertDialog.Builder(this)
-                        .setTitle("请输入DPI")
-                        .setView(view)
-                        .create()
-                DialogHelper.animDialog(dialog)
-            }
+        app_monitor.setOnClickListener {
+            sceneConfigInfo.showMonitor = (it as Switch).isChecked
         }
     }
 
     // 通知辅助服务配置变化
-    private fun notifyService(app: String, mode: String) {
+    private fun notifyService(app: String, mode: String? = null) {
         if (AccessibleServiceHelper().serviceRunning(this)) {
             val intent = Intent(this.getString(R.string.scene_appchange_action))
             intent.putExtra("app", app)
-            intent.putExtra("mode", mode)
+            if (mode != null) {
+                intent.putExtra("mode", mode)
+            }
             sendBroadcast(intent)
         }
     }
@@ -556,7 +300,6 @@ class ActivityAppDetails : ActivityBase() {
     @SuppressLint("SetTextI18n")
     override fun onResume() {
         super.onResume()
-        checkXposedState()
         val powercfg = getSharedPreferences(SpfConfig.POWER_CONFIG_SPF, Context.MODE_PRIVATE)
 
         var packageInfo: PackageInfo? = null
@@ -594,6 +337,7 @@ class ActivityAppDetails : ActivityBase() {
         app_details_aloowlight.isChecked = sceneConfigInfo.aloneLight
         app_details_gps.isChecked = sceneConfigInfo.gpsOn
         app_details_freeze.isChecked = sceneConfigInfo.freeze
+        app_monitor.isChecked = sceneConfigInfo.showMonitor
 
         scene_mode_allow.isChecked = !sceneBlackList.contains(app)
         scene_mode_config.visibility = if (scene_mode_config.visibility == View.VISIBLE && scene_mode_allow.isChecked) View.VISIBLE else View.GONE
@@ -623,33 +367,35 @@ class ActivityAppDetails : ActivityBase() {
                 sceneConfigInfo.disNotice != originConfig.disNotice ||
                 sceneConfigInfo.disButton != originConfig.disButton ||
                 sceneConfigInfo.gpsOn != originConfig.gpsOn ||
-                sceneConfigInfo.dpi != originConfig.dpi ||
-                sceneConfigInfo.excludeRecent != originConfig.excludeRecent ||
-                sceneConfigInfo.smoothScroll != originConfig.smoothScroll ||
                 sceneConfigInfo.freeze != originConfig.freeze ||
                 sceneConfigInfo.fgCGroupMem != originConfig.fgCGroupMem ||
                 sceneConfigInfo.bgCGroupMem != originConfig.bgCGroupMem ||
-                sceneConfigInfo.bgCGroupMem != originConfig.bgCGroupMem ||
-                sceneConfigInfo.dynamicBoostMem != originConfig.dynamicBoostMem
+                sceneConfigInfo.dynamicBoostMem != originConfig.dynamicBoostMem ||
+                sceneConfigInfo.showMonitor != originConfig.showMonitor
         ) {
             setResult(RESULT_OK, this.intent)
         } else {
             setResult(_result, this.intent)
         }
-        if (aidlConn != null) {
-            aidlConn!!.updateAppConfig(app, sceneConfigInfo.dpi, sceneConfigInfo.excludeRecent, sceneConfigInfo.smoothScroll)
-            aidlConn!!.setBooleanValue("com.android.systemui_hide_su", app_details_hide_su.isChecked)
-            aidlConn!!.setBooleanValue("android_webdebug", app_details_webview_debug.isChecked)
-            aidlConn!!.setBooleanValue("android_dis_service_foreground", app_details_service_running.isChecked)
-        }
         if (!SceneConfigStore(this).setAppConfig(sceneConfigInfo)) {
             Toast.makeText(applicationContext, getString(R.string.config_save_fail), Toast.LENGTH_LONG).show()
+        } else {
+            if (sceneConfigInfo.fgCGroupMem != originConfig.fgCGroupMem ||
+                    sceneConfigInfo.bgCGroupMem != originConfig.bgCGroupMem ||
+                    sceneConfigInfo.dynamicBoostMem != originConfig.dynamicBoostMem) {
+                notifyService(app)
+            }
+
+            if (sceneConfigInfo.freeze != originConfig.freeze) {
+                if (sceneConfigInfo.freeze) {
+                    SceneMode.getCurrentInstance()?.setFreezeAppLeaveTime(sceneConfigInfo.packageName)
+                }
+            }
         }
     }
 
     override fun finish() {
         super.finish()
-        tryUnBindAddin()
     }
 
     override fun onPause() {

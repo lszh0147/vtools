@@ -1,6 +1,5 @@
 package com.omarea.vtools.dialogs
 
-import android.app.AlertDialog
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
@@ -41,10 +40,7 @@ class DialogAddinWIFI(private var context: Context) {
                     .replace("\"", "")
                     .trim()
 
-            DialogHelper.animDialog(AlertDialog.Builder(context)
-                    .setTitle("已保存的WIFI记录")
-                    .setMessage(wifiInfo)
-                    .setNeutralButton("确定") { _, _ -> })
+            DialogHelper.alert(context, "已保存的WIFI记录", wifiInfo)
         } else {
             Toast.makeText(context, "没有读取到这个文件，也许不支持您的设备吧！", Toast.LENGTH_LONG).show()
         }
@@ -56,7 +52,12 @@ class DialogAddinWIFI(private var context: Context) {
 
     fun show() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val wifiInfo = KeepShellPublic.doCmdSync("cat /data/misc/wifi/WifiConfigStore.xml")
+            val path = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                "/data/misc/apexdata/com.android.wifi/WifiConfigStore.xml"
+            } else {
+                "/data/misc/wifi/WifiConfigStore.xml"
+            }
+            val wifiInfo =  KeepShellPublic.doCmdSync("cat $path")
             if (wifiInfo.isNotEmpty()) {
                 val factory = DocumentBuilderFactory.newInstance()
                 val builder = factory.newDocumentBuilder()
@@ -84,10 +85,7 @@ class DialogAddinWIFI(private var context: Context) {
                     stringBuild.append("\n\n")
                 }
 
-                DialogHelper.animDialog(AlertDialog.Builder(context)
-                        .setTitle("已保存的WIFI记录")
-                        .setMessage(stringBuild.toString().trim())
-                        .setNeutralButton("确定") { _, _ -> })
+                DialogHelper.alert(context, "已保存的WIFI记录", stringBuild.toString().trim())
             } else {
                 showOld()
             }

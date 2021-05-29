@@ -6,13 +6,18 @@ import android.graphics.drawable.Drawable
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
+import android.util.LruCache
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.ImageView
 import android.widget.TextView
+import com.omarea.library.basic.AppInfoLoader
 import com.omarea.model.ProcessInfo
 import com.omarea.vtools.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 /**
  * Created by Hello on 2018/01/26.
@@ -23,6 +28,10 @@ class FloatProcessAdapter(private val context: Context,
                           private var keywords: String = "",
                           private var sortMode: Int = SORT_MODE_CPU,
                           private var filterMode: Int = FILTER_ANDROID) : BaseAdapter() {
+    private val appInfoLoader = AppInfoLoader(context, 100)
+    private val androidIcon = context.getDrawable(R.drawable.process_android)
+    private val linuxIcon = context.getDrawable(R.drawable.process_linux)
+
     companion object {
         val SORT_MODE_DEFAULT = 1;
         val SORT_MODE_CPU = 4;
@@ -30,19 +39,17 @@ class FloatProcessAdapter(private val context: Context,
         val SORT_MODE_PID = 16;
 
         val FILTER_ALL = 1;
-        val FILTER_OTHER = 4;
-        val FILTER_ANDROID_USER = 8;
-        val FILTER_ANDROID_SYSTEM = 16;
         val FILTER_ANDROID = 32;
     }
 
     private val pm = context.packageManager
     private lateinit var list: ArrayList<ProcessInfo>
     private val nameCache = HashMap<String, String>()
+    private val iconCaches = LruCache<String, Drawable>(100)
 
     init {
-        loadLabel()
         setList()
+        loadLabel()
     }
 
     override fun getCount(): Int {
@@ -74,28 +81,6 @@ class FloatProcessAdapter(private val context: Context,
             }
             info.cpu = cpuTotal
             info
-        }
-        this.list = ArrayList(processes)
-        notifyDataSetChanged()
-    }
-
-    private fun keywordSearch(item: ProcessInfo, text: String): Boolean {
-        return item.friendlyName.toString().toLowerCase().contains(text) || item.name.toString().toLowerCase().contains(text) || item.user.toString().toLowerCase().contains(text) || item.command.toString().toLowerCase().contains(text) || item.cmdline.toString().toLowerCase().contains(text)
-    }
-
-    private fun filterAppList(): ArrayList<ProcessInfo> {
-        val text = keywords.toLowerCase()
-        val keywordsEmpty = text.isEmpty()
-        return ArrayList(processes.filter { it ->
-            (keywordsEmpty || keywordSearch(it, text)) && (
-                    when (filterMode) {
-                        FILTER_ALL -> true
-                        FILTER_ANDROID_USER -> isAndroidUserProcess(it)
-                        FILTER_ANDROID_SYSTEM -> isSystemProcess(it)
-                        FILTER_ANDROID -> isAndroidProcess(it)
-                        FILTER_OTHER -> !isAndroidProcess(it)
-                        else -> true
-                    })
         }.sortedBy {
             when (sortMode) {
                 SORT_MODE_DEFAULT -> it.pid
@@ -104,6 +89,19 @@ class FloatProcessAdapter(private val context: Context,
                 SORT_MODE_PID -> -it.pid
                 else -> it.pid
             }
+        }
+        this.list = ArrayList(if (processes.size > 100) processes.subList(0, 100) else processes)
+        notifyDataSetChanged()
+    }
+
+    private fun filterAppList(): ArrayList<ProcessInfo> {
+        return ArrayList(processes.filter { it ->
+            (
+                    when (filterMode) {
+                        FILTER_ALL -> true
+                        FILTER_ANDROID -> isAndroidProcess(it)
+                        else -> true
+                    })
         })
     }
 
@@ -131,29 +129,20 @@ class FloatProcessAdapter(private val context: Context,
             return
         } else {
             if (isAndroidProcess(item)) {
-                Thread(Runnable {
+                GlobalScope.launch(Dispatchers.Main) {
                     var icon: Drawable? = null
                     try {
                         val name = if (item.name.contains(":")) item.name.substring(0, item.name.indexOf(":")) else item.name
-                        val installInfo = pm.getPackageInfo(name, 0)
-                        icon = installInfo.applicationInfo.loadIcon(pm)
+                        icon = appInfoLoader.loadIcon(name).await()
                     } catch (ex: Exception) {
-                    } finally {
-                        if (icon != null) {
-                            imageView.post {
-                                imageView.setImageDrawable(icon)
-                                imageView.tag = item.name
-                            }
-                        } else {
-                            imageView.post {
-                                imageView.setImageDrawable(context.getDrawable(R.drawable.process_android))
-                                imageView.tag = item.name
-                            }
-                        }
                     }
-                }).start()
+                    imageView.post {
+                        imageView.setImageDrawable(if (icon != null) icon else androidIcon)
+                        imageView.tag = item.name
+                    }
+                }
             } else {
-                imageView.setImageDrawable(context.getDrawable(R.drawable.process_linux))
+                imageView.setImageDrawable(linuxIcon)
                 imageView.tag = item.name
             }
         }
@@ -221,8 +210,8 @@ class FloatProcessAdapter(private val context: Context,
 
     fun setList(processes: ArrayList<ProcessInfo>) {
         this.processes = processes
-        loadLabel()
         setList()
+        loadLabel()
     }
 
     private fun updateRow(position: Int, view: View) {

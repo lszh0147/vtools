@@ -21,123 +21,6 @@
             android:orientation="vertical"
             android:paddingBottom="@dimen/activity_vertical_margin">
 
-            <LinearLayout style="@style/ListCardItem" android:visibility="gone">
-                <LinearLayout
-                    android:id="@+id/config_cfg_select"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="@dimen/activity_vertical_margin"
-                    android:baselineAligned="false"
-                    android:orientation="horizontal">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/textTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="8dp"
-                            android:text="Scene自带" />
-
-                        <TextView
-                            style="@style/textSmall"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="针对处理器定制的两套调度方案" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
-                        android:layout_marginStart="@dimen/activity_horizontal_margin"
-                        android:orientation="vertical">
-
-                        <Button
-                            android:id="@+id/config_cfg_select_0"
-                            android:layout_width="75dp"
-                            android:layout_height="30dp"
-                            android:layout_gravity="center"
-                            android:background="@android:color/transparent"
-                            android:text="偏向省电"
-                            android:textColor="?android:colorAccent" />
-
-                        <Button
-                            android:id="@+id/config_cfg_select_1"
-                            android:layout_width="75dp"
-                            android:layout_height="30dp"
-                            android:layout_gravity="center"
-                            android:background="@android:color/transparent"
-                            android:text="偏向性能"
-                            android:textColor="?android:colorAccent" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/config_cfg_customer"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:baselineAligned="false"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
-                        android:layout_weight="1"
-                        android:gravity="center_vertical"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/textTitle"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="8dp"
-                            android:text="第三方配置" />
-
-                        <TextView
-                            style="@style/textSmall"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="从SdCard导入或在线下载第三方配置" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
-                        android:layout_marginStart="@dimen/activity_horizontal_margin"
-                        android:gravity="center_vertical"
-                        android:orientation="vertical">
-
-                        <Button
-                            android:id="@+id/config_customer_powercfg"
-                            android:layout_width="75dp"
-                            android:layout_height="30dp"
-                            android:layout_gravity="center"
-                            android:background="@android:color/transparent"
-                            android:text="本地导入"
-                            android:textColor="?android:colorAccent" />
-
-                        <Button
-                            android:id="@+id/config_customer_powercfg_online"
-                            android:layout_width="75dp"
-                            android:layout_height="30dp"
-                            android:layout_gravity="center"
-                            android:background="@android:color/transparent"
-                            android:text="在线下载"
-                            android:textColor="?android:colorAccent" />
-                    </LinearLayout>
-                </LinearLayout>
-
-            </LinearLayout>
-
             <LinearLayout
                 android:id="@+id/cpu_mode_outside"
                 style="@style/ListCardItem"
@@ -151,7 +34,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="正在使用外部配置(/data/powercfg.sh)\n如需换回Scene3自带配置，或通过Scene导入配置，请点右侧删除按钮"
+                    android:text="正在使用外部配置(/data/powercfg.sh)\n如需换回Scene自带配置，或通过Scene导入配置，请点右侧删除按钮"
                     android:textSize="13dp" />
 
                 <ImageButton
@@ -449,7 +332,6 @@
                         <com.omarea.ui.HelpIcon
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="5dp"
                             app:text="没有单独设置模式的应用，将默认使用此模式。\n\n如需为某个应用单独设置模式，请返回上一级页面进入“应用场景”。" />
 
                         <TextView
@@ -458,7 +340,7 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="center_vertical"
                             android:layout_weight="1"
-                            android:text="全局默认" />
+                            android:text="全局默认（亮屏状态）" />
 
                         <Spinner
                             android:id="@+id/first_mode"
@@ -467,6 +349,34 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="center_vertical|right"
                             android:entries="@array/default_powercfg_mode_options"
+                            android:paddingRight="0dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_marginTop="@dimen/activity_vertical_margin"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <com.omarea.ui.HelpIcon
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:text="手机进入待机状态后，将切换至选定的模式" />
+
+                        <TextView
+                            style="@style/textTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_vertical"
+                            android:layout_weight="1"
+                            android:text="待机时切换" />
+
+                        <Spinner
+                            android:id="@+id/sleep_mode"
+                            style="@style/SceneSpinner"
+                            android:layout_width="110dp"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_vertical|right"
+                            android:entries="@array/sleep_powercfg_mode_options"
                             android:paddingRight="0dp" />
                     </LinearLayout>
 
@@ -480,8 +390,7 @@
                         <com.omarea.ui.HelpIcon
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="5dp"
-                            app:text="正常情况下，Scene会尽可能的减少模式切换\n\n例如：在几个同为“省电模式”的应用之前来回切换，是不会重复运行模式切换代码的\n\n除非是你发现每次切换应用，调度参数就会被系统重置，那才需要开启这个选项~" />
+                            app:text="正常情况下，Scene会尽可能的减少模式切换\n\n例如：在几个同为“省电模式”的应用之前来回切换，是不会重复运行模式切换代码的\n\n而开启严格模式之后，只要前台应用发生变化，就会执行调度切换（并告知调度脚本正被打开的应用）" />
 
                         <Switch
                             android:id="@+id/strict_mode"
@@ -490,7 +399,7 @@
                             android:layout_weight="1"
                             android:layout_height="wrap_content"
                             android:layout_gravity="center_vertical"
-                            android:text="重复执行" />
+                            android:text="严格模式" />
 
                     </LinearLayout>
 
@@ -504,7 +413,6 @@
                         <com.omarea.ui.HelpIcon
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="5dp"
                             app:text="前台应用发生变化后，延迟5s再执行调度模式切换" />
 
                         <Switch

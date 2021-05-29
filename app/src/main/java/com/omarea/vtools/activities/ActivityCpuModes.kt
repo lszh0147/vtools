@@ -2,10 +2,10 @@ package com.omarea.vtools.activities
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -27,7 +27,6 @@ import com.omarea.vtools.R
 import kotlinx.android.synthetic.main.activity_cpu_modes.*
 import java.io.File
 import java.nio.charset.Charset
-import java.util.*
 
 
 class ActivityCpuModes : ActivityBase() {
@@ -52,17 +51,6 @@ class ActivityCpuModes : ActivityBase() {
         bindMode(cpu_config_p2, ModeSwitcher.PERFORMANCE)
         bindMode(cpu_config_p3, ModeSwitcher.FAST)
 
-        config_customer_powercfg.setOnClickListener {
-            if (!outsideOverrided()) {
-                chooseLocalConfig()
-            }
-        }
-        config_customer_powercfg_online.setOnClickListener {
-            if (!outsideOverrided()) {
-                getOnlineConfig()
-            }
-        }
-        checkConfig()
         dynamic_control.isChecked = globalSPF.getBoolean(SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL, SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL_DEFAULT)
         dynamic_control_opts.visibility = if (dynamic_control.isChecked) View.VISIBLE else View.GONE
         dynamic_control.setOnClickListener {
@@ -97,26 +85,39 @@ class ActivityCpuModes : ActivityBase() {
         }
 
         cpu_mode_delete_outside.setOnClickListener {
-            DialogHelper.animDialog(AlertDialog.Builder(context).setTitle("确定删除?")
-                    .setMessage("确定删除安装在 /data/powercfg.sh 的外部配置脚本吗？\n它可能是Scene2遗留下来的，也可能是其它优化模块创建的")
-                    .setPositiveButton(R.string.btn_confirm) { _, _ ->
+            DialogHelper.confirm(this, "确定删除?",
+                    "确定删除安装在 /data/powercfg.sh 的外部配置脚本吗？\n它可能是Scene2遗留下来的，也可能是其它优化模块创建的\n（删除后建议重启手机一次）",
+                    {
                         configInstaller.removeOutsideConfig()
                         cpu_mode_outside.visibility = View.GONE
                         reStartService()
                         updateState()
-                    }.setNegativeButton(R.string.btn_cancel, { _, _ -> }))
+                    })
         }
 
-        val modeValue = globalSPF.getString(SpfConfig.GLOBAL_SPF_POWERCFG_FIRST_MODE, "balance")
-        when (modeValue) {
-            ModeSwitcher.POWERSAVE -> first_mode.setSelection(0)
-            ModeSwitcher.BALANCE -> first_mode.setSelection(1)
-            ModeSwitcher.PERFORMANCE -> first_mode.setSelection(2)
-            ModeSwitcher.FAST -> first_mode.setSelection(3)
-            ModeSwitcher.IGONED -> first_mode.setSelection(4)
+        first_mode.run {
+            when (globalSPF.getString(SpfConfig.GLOBAL_SPF_POWERCFG_FIRST_MODE, ModeSwitcher.BALANCE)) {
+                ModeSwitcher.POWERSAVE -> setSelection(0)
+                ModeSwitcher.BALANCE -> setSelection(1)
+                ModeSwitcher.PERFORMANCE -> setSelection(2)
+                ModeSwitcher.FAST -> setSelection(3)
+                ModeSwitcher.IGONED -> setSelection(4)
+            }
+
+            onItemSelectedListener = ModeOnItemSelectedListener(globalSPF) {
+                reStartService()
+            }
         }
-        first_mode.onItemSelectedListener = ModeOnItemSelectedListener(globalSPF) {
-            reStartService()
+
+        sleep_mode.run {
+            when (globalSPF.getString(SpfConfig.GLOBAL_SPF_POWERCFG_SLEEP_MODE, ModeSwitcher.POWERSAVE)) {
+                ModeSwitcher.POWERSAVE -> setSelection(0)
+                ModeSwitcher.BALANCE -> setSelection(1)
+                ModeSwitcher.PERFORMANCE -> setSelection(2)
+                ModeSwitcher.IGONED -> setSelection(3)
+            }
+            onItemSelectedListener = ModeOnItemSelectedListener2(globalSPF) {
+            }
         }
 
         val sourceClick = object : View.OnClickListener {
@@ -140,7 +141,7 @@ class ActivityCpuModes : ActivityBase() {
     // 选择配置来源
     private fun chooseConfigSource () {
         val view = layoutInflater.inflate(R.layout.dialog_powercfg_source, null)
-        val dialog = DialogHelper.customDialogBlurBg(this, view)
+        val dialog = DialogHelper.customDialog(this, view)
 
         val conservative = view.findViewById<View>(R.id.source_official_conservative)
         val active = view.findViewById<View>(R.id.source_official_active)
@@ -223,6 +224,26 @@ class ActivityCpuModes : ActivityBase() {
             }
             if (globalSPF.getString(SpfConfig.GLOBAL_SPF_POWERCFG_FIRST_MODE, ModeSwitcher.DEFAULT) != mode) {
                 globalSPF.edit().putString(SpfConfig.GLOBAL_SPF_POWERCFG_FIRST_MODE, mode).commit()
+                runnable.run()
+            }
+        }
+    }
+
+    private class ModeOnItemSelectedListener2(private var globalSPF: SharedPreferences, private var runnable: Runnable) : AdapterView.OnItemSelectedListener {
+        override fun onNothingSelected(parent: AdapterView<*>?) {
+        }
+
+        @SuppressLint("ApplySharedPref")
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            var mode = ModeSwitcher.POWERSAVE
+            when (position) {
+                0 -> mode = ModeSwitcher.POWERSAVE
+                1 -> mode = ModeSwitcher.BALANCE
+                2 -> mode = ModeSwitcher.PERFORMANCE
+                3 -> mode = ModeSwitcher.IGONED
+            }
+            if (globalSPF.getString(SpfConfig.GLOBAL_SPF_POWERCFG_SLEEP_MODE, ModeSwitcher.POWERSAVE) != mode) {
+                globalSPF.edit().putString(SpfConfig.GLOBAL_SPF_POWERCFG_SLEEP_MODE, mode).commit()
                 runnable.run()
             }
         }
@@ -384,26 +405,6 @@ class ActivityCpuModes : ActivityBase() {
         }
     }
 
-    //检查配置脚本是否已经安装
-    private fun checkConfig() {
-        val support = configInstaller.dynamicSupport(context)
-        if (support) {
-            config_cfg_select.visibility = View.VISIBLE
-            config_cfg_select_0.setOnClickListener {
-                if (!outsideOverrided()) {
-                    installConfig(false)
-                }
-            }
-            config_cfg_select_1.setOnClickListener {
-                if (!outsideOverrided()) {
-                    installConfig(true)
-                }
-            }
-        } else {
-            config_cfg_select.visibility = View.GONE
-        }
-    }
-
     private fun chooseLocalConfig() {
         val action = REQUEST_POWERCFG_FILE
         if (Build.VERSION.SDK_INT >= 30) {
@@ -422,7 +423,23 @@ class ActivityCpuModes : ActivityBase() {
         }
     }
 
+    private fun openUrl(link: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        } catch (ex: Exception) {
+        }
+    }
+
     private fun getOnlineConfig() {
+        DialogHelper.alert(this,
+                "提示",
+                "目前，Scene已不再提供【在线获取配置脚本】功能，如有需要，推荐使用“yc9559”提供的优化模块，通过Magisk刷入后重启手机，即可在Scene里体验调度切换功能~") {
+            openUrl("https://github.com/yc9559/uperf")
+        }
+
+        /*
         var i = 0
         DialogHelper.animDialog(AlertDialog.Builder(context)
                 .setTitle(getString(R.string.config_online_options))
@@ -441,6 +458,7 @@ class ActivityCpuModes : ActivityBase() {
                         getOnlineConfigV2()
                     }
                 })
+         */
     }
 
     private fun getOnlineConfigV1() {
@@ -481,14 +499,14 @@ class ActivityCpuModes : ActivityBase() {
             Scene.toast(getString(R.string.config_installed), Toast.LENGTH_LONG)
             reStartService()
         } else {
-            DialogHelper.animDialog(AlertDialog.Builder(context)
-                    .setMessage("配置脚本已安装，是否开启 [动态响应] ？")
-                    .setPositiveButton(R.string.btn_confirm) { _, _ ->
+            DialogHelper.confirm(
+                    this,
+                    "",
+                    "配置脚本已安装，是否开启 [动态响应] ？",
+                    {
                         dynamic_control.isChecked = true
                         globalSPF.edit().putBoolean(SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL, true).apply()
                         reStartService()
-                    }
-                    .setNegativeButton(R.string.btn_cancel) { _, _ ->
                     })
         }
     }

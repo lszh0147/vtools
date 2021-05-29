@@ -14,8 +14,10 @@ import android.os.Looper
 import android.provider.Settings
 import android.text.Spannable
 import android.text.SpannableString
+import android.text.SpannableStringBuilder
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
+import android.util.Log
 import android.view.*
 import android.view.WindowManager.LayoutParams
 import android.widget.ImageView
@@ -30,8 +32,6 @@ import com.omarea.vtools.R
 import java.util.*
 
 class FloatMonitor(private val mContext: Context) {
-    private var timer: Timer? = null
-    private var startMonitorTime = 0L
     private var cpuLoadUtils = CpuLoadUtils()
     private var CpuFrequencyUtil = CpuFrequencyUtils()
 
@@ -42,10 +42,9 @@ class FloatMonitor(private val mContext: Context) {
      * @param context
      */
     fun showPopupWindow() {
-        if (isShown!!) {
+        if (show!!) {
             return
         }
-        startMonitorTime = System.currentTimeMillis()
         if (batteryManager == null) {
             batteryManager = mContext.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         }
@@ -55,7 +54,7 @@ class FloatMonitor(private val mContext: Context) {
             return
         }
 
-        isShown = true
+        show = true
         // 获取WindowManager
         mWindowManager = mContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
@@ -161,7 +160,7 @@ class FloatMonitor(private val mContext: Context) {
     }
 
     private fun stopTimer() {
-        if (this.timer != null) {
+        if (timer != null) {
             timer!!.cancel()
             timer = null
         }
@@ -208,6 +207,9 @@ class FloatMonitor(private val mContext: Context) {
 
     private val fpsUtils = FpsUtils()
     private var batteryManager: BatteryManager? = null
+
+    private val boldStyleSpan = StyleSpan(Typeface.BOLD)
+    private val whiteSpan = ForegroundColorSpan(Color.WHITE)
 
     private fun updateInfo() {
         if (coreCount < 1) {
@@ -257,93 +259,88 @@ class FloatMonitor(private val mContext: Context) {
         // GPU内存使用
         var gpuMemoryUsage = GpuUtils.getMemoryUsage()
 
+        val otherInfoBuilder = SpannableStringBuilder()
+        if (showOtherInfo) {
+            totalMem = (info.totalMem / 1024 / 1024f).toInt()
+            availMem = (info.availMem / 1024 / 1024f).toInt()
+            val ramInfoText = "#RAM  " + ((totalMem - availMem) * 100 / totalMem).toString() + "%"
+
+            otherInfoBuilder.append(SpannableString(ramInfoText).apply {
+                setSpan(whiteSpan, 0, ramInfoText.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(boldStyleSpan, 0, ramInfoText.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            })
+            otherInfoBuilder.append("\n")
+
+            if (gpuMemoryUsage != null) {
+                gpuMemoryUsage = "#GMEM " + gpuMemoryUsage
+                otherInfoBuilder.append(SpannableString(gpuMemoryUsage).apply {
+                    setSpan(whiteSpan, 0, gpuMemoryUsage.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    setSpan(boldStyleSpan, 0, gpuMemoryUsage.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                })
+                otherInfoBuilder.append("\n")
+            }
+
+            var clusterIndex = 0
+            for (cluster in clusters) {
+                if (clusterIndex != 0) {
+                    otherInfoBuilder.append("\n")
+                }
+                if (cluster.size > 0) {
+                    try {
+                        val title = "#" + cluster[0] + "~" + cluster[cluster.size - 1] + "  " + subFreqStr(clustersFreq.get(clusterIndex)) + "Mhz";
+                        otherInfoBuilder.append(SpannableString(title).apply {
+                            setSpan(whiteSpan, 0, title.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                            setSpan(boldStyleSpan, 0, title.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        })
+
+                        val otherInfos = StringBuilder("")
+                        for (core in cluster) {
+                            otherInfos.append("\nCPU").append(core).append("  ")
+                            val load = loads.get(core.toInt())
+                            if (load != null) {
+                                if (load < 10) {
+                                    otherInfos.append(" ")
+                                }
+                                otherInfos.append(load.toInt()).append("%")
+                            } else {
+                                otherInfos.append("×")
+                            }
+                        }
+                        otherInfoBuilder.append(otherInfos.toString())
+                    } catch (ex: Exception) {
+                    }
+                }
+                clusterIndex++
+            }
+
+            fpsUtils.currentFps?.run {
+                otherInfoBuilder.append("\n")
+
+                val fpsInfo = "#FPS  $this"
+                otherInfoBuilder.append(SpannableString(fpsInfo).apply {
+                    setSpan(whiteSpan, 0, fpsInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    setSpan(boldStyleSpan, 0, fpsInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                })
+            }
+
+            batteryCurrentNowMa?.run {
+                if (this > -20000 && this < 20000) {
+                    otherInfoBuilder.append("\n")
+
+                    val batteryInfo = "#BAT  " + (if (this > 0) ("+" + this) else this) + "mA"
+                    otherInfoBuilder.append(SpannableString(batteryInfo).apply {
+                        setSpan(whiteSpan, 0, batteryInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        setSpan(boldStyleSpan, 0, batteryInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    })
+                }
+            }
+        }
+
         myHandler.post {
             if (showOtherInfo) {
-                otherInfo!!.setText("")
+                otherInfo!!.setText(null)
 
-                totalMem = (info.totalMem / 1024 / 1024f).toInt()
-                availMem = (info.availMem / 1024 / 1024f).toInt()
-                val ramInfoText = "#RAM  " + ((totalMem - availMem) * 100 / totalMem).toString() + "%"
-
-                val ramSpannable = SpannableString(ramInfoText)
-                val styleSpan = StyleSpan(Typeface.BOLD);
-                ramSpannable.setSpan(ForegroundColorSpan(Color.WHITE), 0, ramInfoText.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                ramSpannable.setSpan(styleSpan, 0, ramInfoText.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                otherInfo?.append(ramSpannable)
-                otherInfo?.append("\n")
-
-                if (gpuMemoryUsage != null) {
-                    gpuMemoryUsage = "#GMEM " + gpuMemoryUsage
-                    val gmemSpannable = SpannableString(gpuMemoryUsage)
-                    val styleSpan = StyleSpan(Typeface.BOLD);
-                    gmemSpannable.setSpan(ForegroundColorSpan(Color.WHITE), 0, gpuMemoryUsage.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    gmemSpannable.setSpan(styleSpan, 0, gpuMemoryUsage.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    otherInfo?.append(gmemSpannable)
-                    otherInfo?.append("\n")
-                }
-
-                var clusterIndex = 0
-                for (cluster in clusters) {
-                    if (clusterIndex != 0) {
-                        otherInfo?.append("\n")
-                    }
-                    if (cluster.size > 0) {
-                        try {
-                            val title = "#" + cluster[0] + "~" + cluster[cluster.size - 1] + "  " + subFreqStr(clustersFreq.get(clusterIndex)) + "Mhz";
-                            val titleSpannable = SpannableString(title)
-                            val styleSpan = StyleSpan(Typeface.BOLD)
-                            titleSpannable.setSpan(ForegroundColorSpan(Color.WHITE), 0, title.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                            titleSpannable.setSpan(styleSpan, 0, title.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                            otherInfo?.append(titleSpannable)
-
-                            val otherInfos = StringBuilder("")
-                            for (core in cluster) {
-                                otherInfos.append("\n")
-                                otherInfos.append("CPU")
-                                otherInfos.append(core)
-                                otherInfos.append("  ")
-                                val load = loads.get(core.toInt())
-                                if (load != null) {
-                                    if (load < 10) {
-                                        otherInfos.append(" ")
-                                        otherInfos.append(load.toInt())
-                                        otherInfos.append("%")
-                                    } else {
-                                        otherInfos.append(load.toInt())
-                                        otherInfos.append("%")
-                                    }
-                                } else {
-                                    otherInfos.append("×")
-                                }
-                            }
-                            otherInfo?.append(otherInfos.toString())
-                        } catch (ex: Exception) {
-                        }
-                    }
-                    clusterIndex++
-                }
-
-                fpsUtils.currentFps?.run {
-                    otherInfo?.append("\n")
-
-                    val fpsInfo = "#FPS  $this"
-                    val fpsSpannable = SpannableString(fpsInfo);
-                    fpsSpannable.setSpan(ForegroundColorSpan(Color.WHITE), 0, fpsInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    fpsSpannable.setSpan(StyleSpan(Typeface.BOLD), 0, fpsInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    otherInfo?.append(fpsSpannable)
-                }
-
-                batteryCurrentNowMa?.run {
-                    if (this > -20000 && this < 20000) {
-                        otherInfo?.append("\n")
-
-                        val batteryInfo = "#BAT  " + (if (this > 0) ("+" + this) else this) + "mA"
-                        val batterySpannable = SpannableString(batteryInfo);
-                        batterySpannable.setSpan(ForegroundColorSpan(Color.WHITE), 0, batteryInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        batterySpannable.setSpan(StyleSpan(Typeface.BOLD), 0, batteryInfo.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        otherInfo?.append(batterySpannable)
-                    }
-                }
+                otherInfo?.text = otherInfoBuilder
             }
 
             cpuChart!!.setData(100f, (100 - cpuLoad).toFloat())
@@ -373,7 +370,7 @@ class FloatMonitor(private val mContext: Context) {
                 updateInfo()
             }
         }, 0, 1500)
-        updateInfo()
+        // updateInfo()
     }
 
     /**
@@ -381,10 +378,10 @@ class FloatMonitor(private val mContext: Context) {
      */
     fun hidePopupWindow() {
         stopTimer()
-        if (isShown!! && null != mView) {
+        if (show!! && null != mView) {
             mWindowManager!!.removeView(mView)
             mView = null
-            isShown = false
+            show = false
         }
     }
 
@@ -420,9 +417,10 @@ class FloatMonitor(private val mContext: Context) {
 
     companion object {
         private var mWindowManager: WindowManager? = null
-        public var isShown: Boolean? = false
+        public var show: Boolean? = false
 
         @SuppressLint("StaticFieldLeak")
         private var mView: View? = null
+        private var timer: Timer? = null
     }
 }

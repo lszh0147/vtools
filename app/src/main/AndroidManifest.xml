@@ -67,6 +67,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".activities.ActivityAppXposedDetails"
+            android:exported="true"
+            android:screenOrientation="behind">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <service
             android:name="com.omarea.scene_mode.TriggerExecutorService"
@@ -127,7 +137,7 @@
             android:configChanges="keyboardHidden|orientation|uiMode|screenSize|density|screenLayout|fontScale|smallestScreenSize"
             android:excludeFromRecents="false"
             android:exported="true"
-            android:label="@string/app_name"
+            android:label="@string/app_name_short"
             android:launchMode="singleTop"
             android:screenOrientation="behind">
             <intent-filter>
@@ -236,6 +246,7 @@
             android:label="@string/title_activity_freeze"
             android:screenOrientation="behind"
             android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustPan"
             android:roundIcon="@drawable/freeze_logo">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -279,14 +290,17 @@
         <activity android:name=".activities.ActivityImg" android:configChanges="orientation|screenSize" />
         <activity android:name=".activities.ActivityBattery" android:configChanges="orientation|screenSize" />
         <activity android:name=".activities.ActivityCharge" android:configChanges="orientation|screenSize" />
-        <activity android:name=".activities.ActivityProcess" android:configChanges="orientation|screenSize" />
+        <activity android:name=".activities.ActivityProcess" android:windowSoftInputMode="adjustPan" android:configChanges="orientation|screenSize" />
         <activity android:name=".activities.ActivityMagisk" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize" />
         <activity android:name=".activities.ActivityCpuControl" android:configChanges="orientation|screenSize" />
         <activity android:name=".activities.ActivityCpuModes" android:configChanges="orientation|screenSize" />
         <activity android:name=".activities.ActivityBatteryStats" android:configChanges="orientation|screenSize" />
-        <activity android:name=".activities.ActivityAppConfig" android:configChanges="orientation|screenSize" />
+        <activity android:name=".activities.ActivityAppConfig2" android:configChanges="orientation|screenSize" />
+        <activity android:name=".activities.ActivityAppXposedConfig" android:configChanges="orientation|screenSize" />
         <activity android:name=".activities.ActivitySystemScene" android:configChanges="orientation|screenSize" />
+        <activity android:name=".activities.ActivityAutoClick" android:configChanges="orientation|screenSize" />
         <activity android:name=".activities.ActivityMiuiThermal" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize" />
+        <activity android:name=".activities.ActivityCustomCommand" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize" />
 
 <!--        <receiver-->
 <!--            android:name=".ReceiverBoot"-->

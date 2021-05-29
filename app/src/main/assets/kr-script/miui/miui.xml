@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8" ?>
 <items>
     <resource dir="file:///android_asset/kr-script/miui" />
-    <group title="状态栏、导航栏">
+    <group title="状态栏、导航栏" visible="getprop persist.vtools.ext_all">
         <switch>
             <title>【MIUI10】状态栏缺口</title>
             <desc>在MIUI10中开启MI8、8SE刘海屏状态栏中间的缺口，减少图标数量，在MiX2和Mi6上测试可用。重启生效！</desc>
@@ -29,7 +29,7 @@
         </switch>
     </group>
 
-    <group title="界面">
+    <group title="界面" visible="getprop persist.vtools.ext_all">
         <switch>
             <title>【MIUI10】屏幕圆角</title>
             <desc>开关全局圆角效果，在MiX2和Mi6上测试可用。重启生效！</desc>
@@ -81,16 +81,59 @@
                 am broadcast -a miui.action.handymode.changemode --ei mode $state
             </set>
         </picker>
+        <action
+            visible="run edge/support.sh"
+            shell="hidden">
+            <title>边缘防误触</title>
+            <summary sh="run edge/summary.sh" />
+            <param
+                title="区域大小(%)"
+                desc="系统设置里的可调节范围是20%~100%"
+                min="0" max="200" name="level" value-sh="run edge/get.sh" type="seekbar" />
+            <set>run haptic/set.sh</set>
+        </action>
+    </group>
+
+    <group title="硬件">
+        <action
+            visible="run haptic/support.sh"
+            shell="hidden">
+            <title>振动反馈</title>
+            <summary sh="run haptic/summary.sh" />
+            <param
+                title="振动强度(%)"
+                desc="超过150%可能会没有明显效果"
+                min="0" max="400" name="level" value-sh="run haptic/get.sh" type="seekbar" />
+            <set>run haptic/set.sh</set>
+        </action>
+        <picker
+            visible="run ai_key/support.sh"
+            options-sh="run ai_key/options.sh"
+            shell="hidden">
+            <title>AI键事件</title>
+            <summary sh="run ai_key/summary.sh" />
+            <get>run ai_key/get.sh</get>
+            <set>run ai_key/set.sh</set>
+        </picker>
     </group>
 
     <group title="温控">
         <picker
             visible="run thermal_conf/support.sh"
-            title="温控配置切换" desc="小米骁龙710、730、835、845、855、865、天玑820系列机型专享！"
+            title="温控配置切换" desc="切换后重启生效，目前仅适配骁龙骁龙710、730、835、845、855、天玑820系列机型"
             options-sh="run thermal_conf/options.sh">
             <summary sh="run thermal_conf/summary.sh" />
             <get>run thermal_conf/current.sh</get>
             <set>run thermal_conf/config.sh</set>
+        </picker>
+        <picker
+            id="mi-thermal"
+            visible="run thermal_conf2/support.sh"
+            title="温控配置切换（2）" desc="切换后无需重启立即生效，目前仅适配855、865、870、888机型）"
+            options-sh="run thermal_conf2/options.sh">
+            <summary sh="run thermal_conf2/summary.sh" />
+            <get>run thermal_conf2/current.sh</get>
+            <set>run thermal_conf2/config.sh</set>
         </picker>
         <action confirm="true">
             <title>开启MIUI9、MIUI10隐藏的温控选项</title>
@@ -100,13 +143,13 @@
     </group>
 
     <group title="功能">
-        <switch id="miui_update">
+        <switch id="miui_update" visible="getprop persist.vtools.ext_all">
             <title>【MIUI10】在线更新检查</title>
             <desc>关闭此开关可以屏蔽在线更新检查</desc>
             <get>run miui_update_get.sh</get>
             <set>run miui_update_set.sh</set>
         </switch>
-        <switch>
+        <switch visible="getprop persist.vtools.ext_all">
             <title>【MIUI10】安全键盘</title>
             <desc>在输入密码时使用MIUI的安全键盘，避免密码被输入法作为自定义词语记录。重启生效！</desc>
             <get>run miui_security_keyboard_get.sh</get>
@@ -133,7 +176,7 @@
     </group>
 
     <group title="其它">
-        <action>
+        <action max-sdk="29">
             <title>应用商店简化</title>
             <desc>简化应用商店排版，并去除一些广告推荐</desc>
             <set>$PAGE_WORK_DIR/app_store_simplify.sh</set>

@@ -1,11 +1,9 @@
 package com.omarea.krscript.ui
 
 import android.content.Context
-import android.opengl.Visibility
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.EditText
-import android.widget.ImageButton
 import android.widget.TextView
 import com.omarea.krscript.R
 import com.omarea.krscript.model.ActionParamInfo
@@ -43,7 +41,7 @@ class ParamsFileChooserRender(private var actionParamInfo: ActionParamInfo, priv
         val layout = LayoutInflater.from(context).inflate(R.layout.kr_param_file, null)
         val textView = layout.findViewById<TextView>(R.id.kr_param_file_text)
         val pathView = layout.findViewById<EditText>(R.id.kr_param_file_path)
-        val btn = layout.findViewById<ImageButton>(R.id.kr_param_file_btn)
+        val btn = layout.findViewById<View>(R.id.kr_param_file_btn)
 
         if (actionParamInfo.editable) {
             textView.visibility = View.GONE

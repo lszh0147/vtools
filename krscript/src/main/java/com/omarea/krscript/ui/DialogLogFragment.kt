@@ -5,11 +5,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.DialogInterface
-import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.os.Message
-import androidx.fragment.app.DialogFragment
 import android.text.SpannableString
 import android.view.LayoutInflater
 import android.view.View
@@ -18,6 +16,7 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import com.omarea.common.ui.DialogHelper
 import com.omarea.krscript.R
 import com.omarea.krscript.executor.ShellExecutor
 import com.omarea.krscript.model.RunnableNode
@@ -43,6 +42,17 @@ class DialogLogFragment : androidx.fragment.app.DialogFragment() {
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         return Dialog(activity!!, if (themeResId != 0) themeResId else R.style.kr_full_screen_dialog_light)
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val activity = this.activity
+        if (activity != null) {
+            dialog?.window?.run {
+                DialogHelper.setWindowBlurBg(this, activity)
+            }
+        }
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -96,7 +106,18 @@ class DialogLogFragment : androidx.fragment.app.DialogFragment() {
             btn_exit?.visibility = View.GONE
         }
 
-        title.text = nodeInfo.title
+        if (!nodeInfo.title.isEmpty()) {
+            title.text = nodeInfo.title
+        } else {
+            title.visibility = View.GONE
+        }
+
+        if (!nodeInfo.desc.isEmpty()) {
+            desc.text = nodeInfo.desc
+        } else {
+            desc.visibility = View.GONE
+        }
+
         action_progress.isIndeterminate = true
         return MyShellHandler(object : IActionEventHandler {
             override fun onCompleted() {

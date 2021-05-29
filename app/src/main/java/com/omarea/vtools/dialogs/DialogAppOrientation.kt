@@ -7,7 +7,6 @@ import android.view.View
 import android.widget.CompoundButton
 import com.omarea.common.ui.DialogHelper
 import com.omarea.library.basic.RadioGroupSimulator
-import com.omarea.scene_mode.ModeSwitcher
 import com.omarea.vtools.R
 
 class DialogAppOrientation(var context: Activity, val current: Int?, val iResultCallback: IResultCallback) {
@@ -18,7 +17,6 @@ class DialogAppOrientation(var context: Activity, val current: Int?, val iResult
     class Transform(private val context: Context) {
         private val res = context.resources
         private val groupNames = ArrayList<String>().apply {
-            addAll(res.getStringArray(R.array.orientation_options))
         }
 
         fun getName(value: Int?): String {
@@ -39,7 +37,7 @@ class DialogAppOrientation(var context: Activity, val current: Int?, val iResult
 
     fun show() {
         val view = context.layoutInflater.inflate(R.layout.dialog_scene_app_orientation, null)
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
         val group = RadioGroupSimulator(
                 view.findViewById<CompoundButton>(R.id.orientation_default).apply {
                     tag = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED

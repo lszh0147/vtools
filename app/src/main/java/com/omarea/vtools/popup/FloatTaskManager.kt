@@ -12,7 +12,7 @@ import android.widget.ImageButton
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
-import com.omarea.library.shell.ProcessUtils
+import com.omarea.library.shell.ProcessUtils2
 import com.omarea.model.ProcessInfo
 import com.omarea.ui.FloatProcessAdapter
 import com.omarea.vtools.R
@@ -22,11 +22,17 @@ class FloatTaskManager(private val context: Context) {
     companion object {
         var mView: View? = null
         private var locked = false
-        val isShown: Boolean
+        val show: Boolean
             get() {
                 return mView != null
             }
+        private var timer: Timer? = null
     }
+
+    val supported: Boolean
+        get () {
+            return processUtils.supported(context)
+        }
 
     /**
      * dp转换成px
@@ -36,7 +42,6 @@ class FloatTaskManager(private val context: Context) {
         return (dpValue * scale + 0.5f).toInt()
     }
 
-    private var timer: Timer? = null
     fun showPopupWindow() {
         if (mView != null) {
             return
@@ -136,18 +141,11 @@ class FloatTaskManager(private val context: Context) {
             true
         }
 
-        if (timer == null) {
-            timer = Timer()
-            timer!!.schedule(object : TimerTask() {
-                override fun run() {
-                    updateData()
-                }
-            }, 0, 3000)
-        }
+        this.startTimer()
     }
 
     private val handle = Handler(Looper.getMainLooper())
-    private val processUtils = ProcessUtils()
+    private val processUtils = ProcessUtils2()
 
     // 更新任务列表
     private fun updateData() {
@@ -190,6 +188,9 @@ class FloatTaskManager(private val context: Context) {
 
             true
         }
+        process_list.setOnItemClickListener { _, _, _, _ ->
+            Toast.makeText(context, "如需结束进程，请长按它~", Toast.LENGTH_SHORT).show()
+        }
 
         // 锁定位置
         fw_float_pin.setOnClickListener {
@@ -215,21 +216,39 @@ class FloatTaskManager(private val context: Context) {
                 process_filter.visibility = View.GONE
                 fw_float_close.visibility = View.GONE
                 fw_float_minimize.setImageDrawable(context.getDrawable(R.drawable.dialog_maximize))
+                this.stopUpdate()
             } else {
                 process_list.visibility = View.VISIBLE
                 process_filter.visibility = View.VISIBLE
                 fw_float_close.visibility = View.VISIBLE
                 fw_float_minimize.setImageDrawable(context.getDrawable(R.drawable.dialog_minimize))
+                this.startTimer()
             }
             // process_filter.visibility = if (process_filter.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
     }
 
-    fun hidePopupWindow() {
+    private fun stopUpdate() {
         if (timer != null) {
             timer?.cancel()
             timer = null
         }
+    }
+
+    private fun startTimer() {
+        this.stopUpdate()
+        if (timer == null) {
+            timer = Timer()
+            timer!!.scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    updateData()
+                }
+            }, 0, 3000)
+        }
+    }
+
+    fun hidePopupWindow() {
+        this.stopUpdate()
         mView?.run {
             // 获取WindowManager
             val mWindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager

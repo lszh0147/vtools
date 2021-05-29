@@ -1,7 +1,6 @@
 package com.omarea.vtools.dialogs
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -17,7 +16,7 @@ import android.widget.TextView
 import android.widget.Toast
 import com.omarea.common.shared.MagiskExtend
 import com.omarea.common.ui.DialogHelper
-import com.omarea.model.Appinfo
+import com.omarea.model.AppInfo
 import com.omarea.utils.CommonCmds
 import com.omarea.vtools.R
 import java.io.File
@@ -26,20 +25,20 @@ import java.io.File
  * Created by Hello on 2018/01/26.
  */
 
-class DialogSingleAppOptions(context: Activity, var app: Appinfo, handler: Handler) : DialogAppOptions(context, arrayListOf<Appinfo>(app), handler) {
+class DialogSingleAppOptions(context: Activity, var app: AppInfo, handler: Handler) : DialogAppOptions(context, arrayListOf<AppInfo>(app), handler) {
 
     fun showSingleAppOptions() {
         when (app.appType) {
-            Appinfo.AppType.USER -> showUserAppOptions()
-            Appinfo.AppType.SYSTEM -> showSystemAppOptions()
-            Appinfo.AppType.BACKUPFILE -> showBackupAppOptions()
+            AppInfo.AppType.USER -> showUserAppOptions()
+            AppInfo.AppType.SYSTEM -> showSystemAppOptions()
+            AppInfo.AppType.BACKUPFILE -> showBackupAppOptions()
             else -> {
                 Toast.makeText(context, "UNSupport！", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun loadAppIcon(app: Appinfo): Drawable? {
+    private fun loadAppIcon(app: AppInfo): Drawable? {
         if (app.icon != null) {
             return app.icon
         } else {
@@ -61,7 +60,7 @@ class DialogSingleAppOptions(context: Activity, var app: Appinfo, handler: Handl
     private fun showUserAppOptions() {
         val dialogView = context.layoutInflater.inflate(R.layout.dialog_app_options_user, null)
 
-        val dialog = DialogHelper.customDialogBlurBg(context, dialogView)
+        val dialog = DialogHelper.customDialog(context, dialogView)
         dialogView.findViewById<TextView>(R.id.app_target_sdk).text = "SDK" + app.targetSdkVersion.toString()
         dialogView.findViewById<TextView>(R.id.app_min_sdk).text = "SDK" + app.minSdkVersion.toString()
         dialogView.findViewById<TextView>(R.id.app_version_name).text = "Version Name: " + app.versionName
@@ -125,7 +124,7 @@ class DialogSingleAppOptions(context: Activity, var app: Appinfo, handler: Handl
     private fun showSystemAppOptions() {
         val dialogView = context.layoutInflater.inflate(R.layout.dialog_app_options_system, null)
 
-        val dialog = DialogHelper.customDialogBlurBg(context, dialogView)
+        val dialog = DialogHelper.customDialog(context, dialogView)
         dialogView.findViewById<TextView>(R.id.app_target_sdk).text = "SDK" + app.targetSdkVersion.toString()
         dialogView.findViewById<TextView>(R.id.app_min_sdk).text = "SDK" + app.minSdkVersion.toString()
         dialogView.findViewById<TextView>(R.id.app_version_name).text = "Version Name: " + app.versionName
@@ -133,6 +132,17 @@ class DialogSingleAppOptions(context: Activity, var app: Appinfo, handler: Handl
         dialogView.findViewById<ImageView>(R.id.app_logo).setImageDrawable(loadAppIcon(app))
 
         dialogView.findViewById<View>(R.id.app_options_single_only).visibility = View.VISIBLE
+        dialogView.findViewById<View>(R.id.app_options_backup_apk).run {
+            visibility = if (app.updated) View.VISIBLE else View.GONE
+
+            if (app.updated) {
+                setOnClickListener {
+                    dialog.dismiss()
+
+                    backupAll()
+                }
+            }
+        }
         dialogView.findViewById<View>(R.id.app_options_copay_package).setOnClickListener {
             dialog.dismiss()
             copyPackageName()
@@ -205,24 +215,41 @@ class DialogSingleAppOptions(context: Activity, var app: Appinfo, handler: Handl
      * 显示备份的应用选项
      */
     private fun showBackupAppOptions() {
-        DialogHelper.animDialog(AlertDialog.Builder(context).setTitle(app.appName)
-                .setCancelable(true)
-                .setItems(
-                        arrayOf("删除备份",
-                                "还原 应用（仅安装）",
-                                "还原 应用和数据",
-                                "还原 数据",
-                                "复制PackageName",
-                                "在应用商店查看")) { _, which ->
-                    when (which) {
-                        0 -> deleteBackupAll()
-                        1 -> restoreAll(apk = true, data = false)
-                        2 -> restoreAll(apk = true, data = true)
-                        3 -> restoreAll(apk = false, data = true)
-                        4 -> copyPackageName()
-                        5 -> showInMarket()
-                    }
-                })
+        val view = context.layoutInflater.inflate(R.layout.dialog_app_restore, null)
+        val dialog = DialogHelper.customDialog(context, view)
+
+        view.findViewById<View>(R.id.app_install).run {
+            setOnClickListener {
+                restoreAll(apk = true, data = false)
+            }
+        }
+        val dataExists = backupDataExists(app.packageName)
+        view.findViewById<View>(R.id.app_restore_full).run {
+            visibility = if (dataExists) View.VISIBLE else View.GONE
+            setOnClickListener {
+                dialog.dismiss()
+                restoreAll(apk = true, data = true)
+            }
+        }
+        view.findViewById<View>(R.id.app_restore_data).run {
+            visibility = if (dataExists) View.VISIBLE else View.GONE
+            setOnClickListener {
+                dialog.dismiss()
+                restoreAll(apk = false, data = true)
+            }
+        }
+        view.findViewById<View>(R.id.app_copy_name).setOnClickListener {
+            dialog.dismiss()
+            copyPackageName()
+        }
+        view.findViewById<View>(R.id.app_go_store).setOnClickListener {
+            dialog.dismiss()
+            showInMarket()
+        }
+        view.findViewById<View>(R.id.app_delete_backup).setOnClickListener {
+            dialog.dismiss()
+            deleteBackupAll()
+        }
     }
 
     private fun openDetails() {
@@ -311,7 +338,7 @@ class DialogSingleAppOptions(context: Activity, var app: Appinfo, handler: Handl
         switchCreateModule.isEnabled = magiskSupported
         switchCreateModule.isChecked = magiskSupported
 
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
         view.findViewById<View>(R.id.btn_confirm).setOnClickListener {
             dialog.dismiss()
 

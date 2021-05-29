@@ -5,7 +5,7 @@
 target=`getprop ro.board.platform`
 
 case "$target" in
-	"kona")
+  "kona")
     # Core control parameters for gold
     echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
     echo 60 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
@@ -44,7 +44,7 @@ case "$target" in
     # cpuset parameters
     echo 0-2 > /dev/cpuset/background/cpus
     echo 0-3 > /dev/cpuset/system-background/cpus
-    echo 0-2,4-7 > /dev/cpuset/foreground/cpus
+    echo 0-7 > /dev/cpuset/foreground/cpus
     echo 0-7 > /dev/cpuset/top-app/cpus
 
     # Turn off scheduler boost at the end
@@ -92,3 +92,16 @@ case "$target" in
     echo N > /sys/module/lpm_levels/parameters/sleep_disabled
   ;;
 esac
+
+pgrep -f surfaceflinger | while read pid; do
+  echo $pid > /dev/cpuset/top-app/tasks
+  echo $pid > /dev/stune/top-app/tasks
+done
+pgrep -f system_server | while read pid; do
+  echo $pid > /dev/cpuset/top-app/tasks
+  echo $pid > /dev/stune/top-app/tasks
+done
+pgrep -f vendor.qti.hardware.display.composer-service | while read pid; do
+  echo $pid > /dev/cpuset/top-app/tasks
+  echo $pid > /dev/stune/top-app/tasks
+done

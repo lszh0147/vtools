@@ -1,25 +1,14 @@
+cgroup_app="$1"
+cgroup_mem="$2"
+
 if [[ -d /dev/memcg ]]; then
-    scene_memcg="/dev/memcg"
-elif [[ -d /sys/fs/cgroup ]]; then
     scene_memcg="/sys/fs/cgroup/memory"
+elif [[ -d /sys/fs/cgroup ]]; then
+    scene_memcg="/dev/memcg"
 fi
 
-function init_group() {
-    local g=$scene_memcg/$1
-    if [[ ! -d $g ]]; then
-      mkdir $g
-    fi
-    echo $2 > $g/memory.swappiness
-    echo $3 > $g/memory.oom_control
-}
-
 if [[ "$scene_memcg" != "" ]]; then
-    init_group scene_lock 100 1
-    init_group scene_perf 10 0
-    init_group scene_sys 0 1
-    init_group scene_def 100 0
-
-    pgrep -f %s | while read pid; do
-        echo $pid > $scene_memcg/%s/tasks
+    pgrep -f $cgroup_app | while read pid; do
+        echo $pid > $scene_memcg$cgroup_mem/tasks
     done
 fi

@@ -3,6 +3,7 @@ package com.omarea.krscript.ui
 import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.view.LayoutInflater
@@ -12,12 +13,14 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import com.omarea.common.model.SelectItem
 import com.omarea.common.ui.DialogHelper
+import com.omarea.common.ui.DialogItemChooser
 import com.omarea.common.ui.ProgressBarDialog
 import com.omarea.common.ui.ThemeMode
-import com.omarea.krscript.R
 import com.omarea.krscript.BgTaskThread
 import com.omarea.krscript.HiddenTaskThread
+import com.omarea.krscript.R
 import com.omarea.krscript.TryOpenActivity
 import com.omarea.krscript.config.IconPathAnalysis
 import com.omarea.krscript.executor.ScriptEnvironmen
@@ -25,7 +28,6 @@ import com.omarea.krscript.model.*
 import com.omarea.krscript.shortcut.ActionShortcutManager
 
 class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.OnItemClickListener {
-
     companion object {
         fun create(
                 actionInfos: ArrayList<NodeInfoBase>?,
@@ -90,22 +92,62 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
         }
     }
 
+    private fun nodeUnlocked(clickableNode: ClickableNode): Boolean {
+        val currentSDK = Build.VERSION.SDK_INT
+        if (clickableNode.targetSdkVersion > 0 && currentSDK != clickableNode.targetSdkVersion) {
+            DialogHelper.helpInfo(context!!,
+                    getString(R.string.kr_sdk_discrepancy),
+                    getString(R.string.kr_sdk_discrepancy_message).format(clickableNode.targetSdkVersion)
+            )
+            return false
+        } else if (currentSDK > clickableNode.maxSdkVersion) {
+            DialogHelper.helpInfo(context!!,
+                    getString(R.string.kr_sdk_overtop),
+                    getString(R.string.kr_sdk_message).format(clickableNode.minSdkVersion, clickableNode.maxSdkVersion)
+            )
+            return false
+        } else if (currentSDK < clickableNode.minSdkVersion) {
+            DialogHelper.helpInfo(context!!,
+                    getString(R.string.kr_sdk_too_low),
+                    getString(R.string.kr_sdk_message).format(clickableNode.minSdkVersion, clickableNode.maxSdkVersion)
+            )
+            return false
+        }
+
+        var message = ""
+        val unlocked = (if (clickableNode.lockShell.isNotEmpty()) {
+            message = ScriptEnvironmen.executeResultRoot(context, clickableNode.lockShell, clickableNode)
+            message == "unlock" || message == "unlocked" || message == "false" || message == "0"
+        } else {
+            !clickableNode.locked
+        })
+        if (!unlocked) {
+            Toast.makeText(context, if (message.isNotEmpty()) {
+                message
+            } else {
+                getString(R.string.kr_lock_message)
+            }, Toast.LENGTH_LONG).show()
+        }
+        return unlocked
+    }
+
     /**
      * 当switch项被点击
      */
     override fun onSwitchClick(item: SwitchNode, onCompleted: Runnable) {
-        val toValue = !item.checked
-        if (item.confirm) {
-            DialogHelper.animDialog(AlertDialog.Builder(this.context!!)
-                    .setTitle(item.title)
-                    .setMessage(item.desc)
-                    .setPositiveButton(this.context!!.getString(R.string.btn_execute)) { _, _ ->
-                        switchExecute(item, toValue, onCompleted)
-                    }
-                    .setNegativeButton(this.context!!.getString(R.string.btn_cancel)) { _, _ ->
-                    })
-        } else {
-            switchExecute(item, toValue, onCompleted)
+        if (nodeUnlocked(item)) {
+            val toValue = !item.checked
+            if (item.confirm) {
+                DialogHelper.warning(activity!!, item.title, item.desc, {
+                    switchExecute(item, toValue, onCompleted)
+                })
+            } else if (item.warning.isNotEmpty()) {
+                DialogHelper.warning(activity!!, item.title, item.warning, {
+                    switchExecute(item, toValue, onCompleted)
+                })
+            } else {
+                switchExecute(item, toValue, onCompleted)
+            }
         }
     }
 
@@ -124,37 +166,39 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
 
 
     override fun onPageClick(item: PageNode, onCompleted: Runnable) {
-        if (context != null && item.link.isNotEmpty()) {
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.link))
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context?.startActivity(intent)
-            } catch (ex: Exception) {
-                Toast.makeText(context, context?.getString(R.string.kr_slice_activity_fail), Toast.LENGTH_SHORT).show()
+        if (nodeUnlocked(item)) {
+            if (context != null && item.link.isNotEmpty()) {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.link))
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context?.startActivity(intent)
+                } catch (ex: Exception) {
+                    Toast.makeText(context, context?.getString(R.string.kr_slice_activity_fail), Toast.LENGTH_SHORT).show()
+                }
+            } else if (context != null && item.activity.isNotEmpty()) {
+                TryOpenActivity(context!!, item.activity).tryOpen()
+            } else {
+                krScriptActionHandler?.onSubPageClick(item)
             }
-        } else if (context != null && item.activity.isNotEmpty()) {
-            TryOpenActivity(context!!, item.activity).tryOpen()
-        } else {
-            krScriptActionHandler?.onSubPageClick(item)
         }
     }
 
     // 长按 添加收藏
     override fun onItemLongClick(clickableNode: ClickableNode) {
         if (clickableNode.key.isEmpty()) {
-            DialogHelper.animDialog(AlertDialog.Builder(context).setTitle(R.string.kr_shortcut_create_fail)
-                    .setMessage(R.string.kr_ushortcut_nsupported)
-                    .setNeutralButton(R.string.btn_cancel) { _, _ ->
-                    }
+            DialogHelper.alert(
+                    this.activity!!,
+                    getString(R.string.kr_shortcut_create_fail),
+                    getString(R.string.kr_ushortcut_nsupported)
             )
         } else {
             krScriptActionHandler?.addToFavorites(clickableNode, object : KrScriptActionHandler.AddToFavoritesHandler {
                 override fun onAddToFavorites(clickableNode: ClickableNode, intent: Intent?) {
                     if (intent != null) {
-                        DialogHelper.animDialog(AlertDialog.Builder(context)
-                                .setTitle(getString(R.string.kr_shortcut_create))
-                                .setMessage(String.format(getString(R.string.kr_shortcut_create_desc), clickableNode.title))
-                                .setPositiveButton(R.string.btn_confirm) { _, _ ->
+                        DialogHelper.confirm(activity!!,
+                                getString(R.string.kr_shortcut_create),
+                                String.format(getString(R.string.kr_shortcut_create_desc), clickableNode.title),
+                                {
                                     val result = ActionShortcutManager(context!!)
                                             .addShortcut(intent, IconPathAnalysis().loadLogo(context!!, clickableNode), clickableNode)
                                     if (!result) {
@@ -162,8 +206,6 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
                                     } else {
                                         Toast.makeText(context, getString(R.string.kr_shortcut_create_success), Toast.LENGTH_SHORT).show()
                                     }
-                                }
-                                .setNegativeButton(R.string.btn_cancel) { _, _ ->
                                 })
                     }
                 }
@@ -175,6 +217,22 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
      * Picker点击
      */
     override fun onPickerClick(item: PickerNode, onCompleted: Runnable) {
+        if (nodeUnlocked(item)) {
+            if (item.confirm) {
+                DialogHelper.warning(activity!!, item.title, item.desc, {
+                    pickerExecute(item, onCompleted)
+                })
+            } else if (item.warning.isNotEmpty()) {
+                DialogHelper.warning(activity!!, item.title, item.warning, {
+                    pickerExecute(item, onCompleted)
+                })
+            } else {
+                pickerExecute(item, onCompleted)
+            }
+        }
+    }
+
+    private fun pickerExecute(item: PickerNode, onCompleted: Runnable) {
         val paramInfo = ActionParamInfo()
         paramInfo.options = item.options
         paramInfo.optionsSh = item.optionsSh
@@ -183,7 +241,7 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
         val handler = Handler()
 
         progressBarDialog.showDialog(getString(R.string.kr_param_options_load))
-        Thread(Runnable {
+        Thread {
             // 获取当前值
             if (item.getState != null) {
                 paramInfo.valueFromShell = executeScriptGetResult(item.getState!!, item)
@@ -191,52 +249,37 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
 
             // 获取可选项（合并options-sh和静态options的结果）
             val options = getParamOptions(paramInfo, item)
-
-            val labels = if (options != null) options.map { (it["item"] as ActionParamInfo.ActionParamOption).desc }.toTypedArray() else arrayOf()
-            val values = if (options != null) options.map { (it["item"] as ActionParamInfo.ActionParamOption).value }.toTypedArray() else arrayOf()
+            val optionsSorted = (if (options != null) {
+                ActionParamsLayoutRender.setParamOptionsSelectedStatus(paramInfo, options)
+            } else {
+                null
+            })
 
             handler.post {
                 progressBarDialog.hideDialog()
-                val builder = AlertDialog.Builder(this.context!!)
-                        .setTitle(item.title)
-                        .setNegativeButton(this.context!!.getString(R.string.btn_cancel)) { _, _ -> }
 
-                // 多选
-                if (item.multiple) {
-                    val status = if (options == null) {
-                        booleanArrayOf()
-                    } else {
-                        ActionParamsLayoutRender.getParamOptionsSelectedStatus(
-                                paramInfo,
-                                options
-                        )
-                    }
-                    builder.setMultiChoiceItems(labels, status) { _, index, isChecked ->
-                        status[index] = isChecked
-                    }.setPositiveButton(R.string.btn_confirm) { _, _ ->
-                        val result = ArrayList<String?>()
-                        for (index in status.indices) {
-                            if (status[index]) {
-                                values[index]?.run {
-                                    result.add(this)
-                                }
+                if (optionsSorted != null) {
+                    val systemUiVisibility = activity!!.window?.decorView?.systemUiVisibility
+                    val darkMode = systemUiVisibility != null && (systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR) == 0
+                    DialogItemChooser(darkMode, optionsSorted, item.multiple, object : DialogItemChooser.Callback {
+                        override fun onConfirm(selected: List<SelectItem>, status: BooleanArray) {
+                            if (item.multiple) {
+                                pickerExecute(item, (selected.map { "" + it.value }).joinToString(item.separator), onCompleted)
+                            } else {
+                                pickerExecute(item, "" + (
+                                        if (selected.size > 0) {
+                                            "" + selected[0].value
+                                        } else {
+                                            ""
+                                        }), onCompleted)
                             }
                         }
-                        pickerExecute(item, "" + result.joinToString(item.separator), onCompleted)
-                    }
+                    }).show(activity!!.supportFragmentManager, "picker-item-chooser")
                 } else {
-                    // 单选
-                    var index = if (options == null) -1 else ActionParamsLayoutRender.getParamOptionsCurrentIndex(paramInfo, options)
-                    builder.setSingleChoiceItems(labels, index) { _, which ->
-                        index = which
-                    }.setPositiveButton(this.context!!.getString(R.string.btn_execute)) { _, _ ->
-                        pickerExecute(item, "" + (if (index > -1) values[index] else ""), onCompleted)
-                    }
+                    Toast.makeText(context, getString(R.string.picker_not_item), Toast.LENGTH_SHORT).show()
                 }
-
-                DialogHelper.animDialog(builder)
             }
-        }).start()
+        }.start()
     }
 
     /**
@@ -256,19 +299,20 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
      * 列表项点击时（如果需要确认界面，则显示确认界面，否则直接准备执行）
      */
     override fun onActionClick(item: ActionNode, onCompleted: Runnable) {
-        if (item.confirm) {
-            DialogHelper.animDialog(AlertDialog.Builder(this.context!!)
-                    .setTitle(item.title)
-                    .setMessage(item.desc)
-                    .setPositiveButton(this.context!!.getString(R.string.btn_execute)) { _, _ ->
-                        actionExecute(item, onCompleted)
-                    }
-                    .setNegativeButton(this.context!!.getString(R.string.btn_cancel)) { _, _ -> })
-        } else {
-            actionExecute(item, onCompleted)
+        if (nodeUnlocked(item)) {
+            if (item.confirm) {
+                DialogHelper.warning(activity!!, item.title, item.desc, {
+                    actionExecute(item, onCompleted)
+                })
+            } else if (item.warning.isNotEmpty() && (item.params == null || item.params?.size == 0)) {
+                DialogHelper.warning(activity!!, item.title, item.warning, {
+                    actionExecute(item, onCompleted)
+                })
+            } else {
+                actionExecute(item, onCompleted)
+            }
         }
     }
-
 
     /**
      * action执行参数界面
@@ -301,7 +345,7 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
                         progressBarDialog.showDialog(this.context!!.getString(R.string.kr_params_render))
                     }
                     handler.post {
-                        val render = ActionParamsLayoutRender(linearLayout)
+                        val render = ActionParamsLayoutRender(linearLayout, activity!!)
                         render.renderList(actionParamInfos, object : ParamsFileChooserRender.FileChooserInterface {
                             override fun openFileChooser(fileSelectedInterface: ParamsFileChooserRender.FileSelectedInterface): Boolean {
                                 return if (krScriptActionHandler == null) {
@@ -335,20 +379,38 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
 
                             val darkMode = themeMode != null && themeMode!!.isDarkMode
 
-                            val builder = if (isLongList) AlertDialog.Builder(this.context, if (darkMode) R.style.kr_full_screen_dialog_dark else R.style.kr_full_screen_dialog_light) else AlertDialog.Builder(this.context)
-                            val dialog = builder.setView(dialogView).create()
-                            if (!isLongList) {
-                                DialogHelper.animDialog(dialog)
+                            val dialog = (if (isLongList) {
+                                val builder = AlertDialog.Builder(this.context, if (darkMode) R.style.kr_full_screen_dialog_dark else R.style.kr_full_screen_dialog_light)
+                                builder.setView(dialogView).create().apply {
+                                    show()
+                                    val window = this.window
+                                    val activity = activity
+                                    if (window != null && activity != null) {
+                                        DialogHelper.setWindowBlurBg(window, activity)
+                                    }
+                                }
                             } else {
-                                dialog.show()
-                            }
+                                // AlertDialog.Builder(this.context).create()
+                                DialogHelper.customDialog(activity!!, dialogView).dialog
+                            })
 
                             dialogView.findViewById<TextView>(R.id.title).text = action.title
+                            if (action.desc.isEmpty()) {
+                                dialogView.findViewById<TextView>(R.id.desc).visibility = View.GONE
+                            } else {
+                                dialogView.findViewById<TextView>(R.id.desc).text = action.desc
+                            }
+                            if (action.warning.isEmpty()) {
+                                dialogView.findViewById<TextView>(R.id.warn).visibility = View.GONE
+                            } else {
+                                dialogView.findViewById<TextView>(R.id.warn).text = action.warning
+                            }
 
                             dialogView.findViewById<View>(R.id.btn_cancel).setOnClickListener {
                                 try {
                                     dialog!!.dismiss()
-                                } catch (ex: java.lang.Exception) {}
+                                } catch (ex: java.lang.Exception) {
+                                }
                             }
                             dialogView.findViewById<View>(R.id.btn_confirm).setOnClickListener {
                                 try {
@@ -372,8 +434,8 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
     /**
      * 获取Param的Options
      */
-    private fun getParamOptions(actionParamInfo: ActionParamInfo, nodeInfoBase: NodeInfoBase): ArrayList<HashMap<String, Any>>? {
-        val options = ArrayList<HashMap<String, Any>>()
+    private fun getParamOptions(actionParamInfo: ActionParamInfo, nodeInfoBase: NodeInfoBase): ArrayList<SelectItem>? {
+        val options = ArrayList<SelectItem>()
         var shellResult = ""
         if (!actionParamInfo.optionsSh.isEmpty()) {
             shellResult = executeScriptGetResult(actionParamInfo.optionsSh, nodeInfoBase)
@@ -383,41 +445,24 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
             for (item in shellResult.split("\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()) {
                 if (item.contains("|")) {
                     val itemSplit = item.split("\\|".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                    options.add(object : HashMap<String, Any>() {
-                        init {
-                            var descText = itemSplit[0]
-                            if (itemSplit.size > 0) {
-                                descText = itemSplit[1]
-                            }
-                            put("title", descText)
-                            put("item", object : ActionParamInfo.ActionParamOption() {
-                                init {
-                                    value = itemSplit[0]
-                                    desc = descText
-                                }
-                            })
+                    options.add(SelectItem().apply {
+                        var descText = itemSplit[0]
+                        if (itemSplit.size > 0) {
+                            descText = itemSplit[1]
                         }
+                        title = descText
+                        value = itemSplit[0]
                     })
                 } else {
-                    options.add(object : HashMap<String, Any>() {
-                        init {
-                            put("title", item)
-                            put("item", object : ActionParamInfo.ActionParamOption() {
-                                init {
-                                    value = item
-                                    desc = item
-                                }
-                            })
-                        }
+                    options.add(SelectItem().apply {
+                        title = item
+                        value = item
                     })
                 }
             }
         } else if (actionParamInfo.options != null) {
             for (option in actionParamInfo.options!!) {
-                val opt = HashMap<String, Any>()
-                opt.set("title", if (option.desc == null) "" else option.desc!!)
-                opt["item"] = option
-                options.add(opt)
+                options.add(option)
             }
         } else {
             return null
@@ -459,8 +504,8 @@ class ActionListFragment : androidx.fragment.app.Fragment(), PageLayoutRender.On
             val darkMode = themeMode != null && themeMode!!.isDarkMode
 
             val dialog = DialogLogFragment.create(nodeInfo, onExit, onDismiss, script, params, darkMode)
-            dialog.show(fragmentManager!!, "")
             dialog.isCancelable = false
+            dialog.show(fragmentManager!!, "")
         }
     }
 }

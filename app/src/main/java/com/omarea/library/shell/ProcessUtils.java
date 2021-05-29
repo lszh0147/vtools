@@ -3,13 +3,11 @@ package com.omarea.library.shell;
 import android.content.Context;
 import android.util.Log;
 
-import com.omarea.common.shared.FileWrite;
 import com.omarea.common.shell.KeepShellPublic;
 import com.omarea.common.shell.KernelProrp;
 import com.omarea.model.ProcessInfo;
-import com.omarea.vtools.R;
+import com.omarea.shell_utils.ToyboxIntaller;
 
-import java.io.File;
 import java.util.ArrayList;
 
 /*
@@ -30,35 +28,44 @@ public class ProcessUtils {
 
     // pageSize 获取 : getconf PAGESIZE
 
-    private static String PS_COMMAND = null;
+    private static String LIST_COMMAND = null;
+    private static String DETAIL_COMMAND = null;
 
     // 兼容性检查
     public boolean supported(Context context) {
-        if (PS_COMMAND == null) {
-            PS_COMMAND = "";
-            String installPath = context.getString(R.string.toolkit_install_path);
-            String toyboxInstallPath = installPath + "/toybox-outside";
-            String outsideToybox = FileWrite.INSTANCE.getPrivateFilePath(context, toyboxInstallPath);
+        if (LIST_COMMAND == null || DETAIL_COMMAND == null) {
+            LIST_COMMAND = "";
+            DETAIL_COMMAND = "";
 
-            if (!new File(outsideToybox).exists()) {
-                FileWrite.INSTANCE.writePrivateFile(context.getAssets(), "toolkit/toybox-outside", toyboxInstallPath, context);
-            }
+            String outsideToybox = new ToyboxIntaller(context).install();
 
+            String perfectCmd = "top -o %CPU,RES,SWAP,NAME,PID,USER,COMMAND,CMDLINE -q -b -n 1 -m 65535";
+            String outsidePerfectCmd = outsideToybox + " " + perfectCmd;
             // String insideCmd = "ps -e -o %CPU,RSS,SHR,NAME,PID,USER,COMMAND,CMDLINE";
-            String insideCmd = "ps -e -o %CPU,RES,SHR,RSS,NAME,PID,S,USER,COMMAND,CMDLINE";
+            // String insideCmd = "ps -e -o %CPU,RES,SHR,RSS,NAME,PID,S,USER,COMMAND,CMDLINE";
+            String insideCmd = "ps -e -o %CPU,RES,SWAP,NAME,PID,USER,COMMAND,CMDLINE";
             String outsideCmd = outsideToybox + " " + insideCmd;
 
-            for (String cmd : new String[]{insideCmd, outsideCmd}) {
+            for (String cmd : new String[]{ outsidePerfectCmd, perfectCmd, outsideCmd,insideCmd }) {
                 String[] rows = KeepShellPublic.INSTANCE.doCmdSync(cmd + " 2>&1").split("\n");
                 String result = rows[0];
                 if (rows.length > 10 && !(result.contains("bad -o") || result.contains("Unknown option") || result.contains("bad"))) {
-                    PS_COMMAND = cmd;
+                    LIST_COMMAND = cmd;
+                    break;
+                }
+            }
+
+            for (String cmd : new String[]{outsideCmd, insideCmd}) {
+                String[] rows = KeepShellPublic.INSTANCE.doCmdSync(cmd + " 2>&1").split("\n");
+                String result = rows[0];
+                if (rows.length > 10 && !(result.contains("bad -o") || result.contains("Unknown option") || result.contains("bad"))) {
+                    DETAIL_COMMAND = cmd + " --pid ";
                     break;
                 }
             }
         }
 
-        return !PS_COMMAND.isEmpty();
+        return !(LIST_COMMAND.isEmpty() || DETAIL_COMMAND.isEmpty());
     }
 
     private long str2Long(String str) {
@@ -73,6 +80,17 @@ public class ProcessUtils {
         }
     }
 
+    // 从进程列表排除的应用
+    private final ArrayList<String> excludeProcess = new ArrayList<String>() {
+        {
+            add("toybox-outside");
+            add("toybox-outside64");
+            add("ps");
+            add("top");
+            add("com.omarea.vtools");
+        }
+    };
+
     // 解析单行数据
     private ProcessInfo readRow(String row) {
         String[] columns = row.split(" +");
@@ -81,21 +99,23 @@ public class ProcessUtils {
                 ProcessInfo processInfo = new ProcessInfo();
                 processInfo.cpu = Float.parseFloat(columns[0]);
                 processInfo.res = str2Long(columns[1]);
-                processInfo.shr = str2Long(columns[2]);
-                processInfo.mem = processInfo.res - processInfo.shr;
-                processInfo.rss = Long.parseLong(columns[3]);
-                processInfo.name = columns[4];
-                processInfo.pid = Integer.parseInt(columns[5]);
-                processInfo.state = columns[6];
-                processInfo.user = columns[7];
-                processInfo.command = columns[8];
+                processInfo.swap = str2Long(columns[2]);
+                processInfo.name = columns[3];
+
+                if (excludeProcess.contains(processInfo.name)) {
+                    return null;
+                }
+
+                processInfo.pid = Integer.parseInt(columns[4]);
+                processInfo.user = columns[5];
+                processInfo.command = columns[6];
                 processInfo.cmdline = row.substring(row.indexOf(processInfo.command) + processInfo.command.length()).trim();
                 return processInfo;
             } catch (Exception ex) {
-                Log.e("Scene-ProcessUtils", "" + ex.getMessage() + " -> " + row);
+                // Log.e("Scene-ProcessUtils", "" + ex.getMessage() + " -> " + row);
             }
         } else {
-            Log.e("Scene-ProcessUtils", "" + row);
+            // Log.e("Scene-ProcessUtils", "" + row);
         }
         return null;
     }
@@ -104,15 +124,18 @@ public class ProcessUtils {
     public ArrayList<ProcessInfo> getAllProcess() {
         ArrayList<ProcessInfo> processInfoList = new ArrayList<>();
         boolean isFristRow = true;
-        for (String row : KeepShellPublic.INSTANCE.doCmdSync(PS_COMMAND).split("\n")) {
-            if (isFristRow) {
-                isFristRow = false;
-                continue;
-            }
+        if (LIST_COMMAND != null) {
+            String[] rows = KeepShellPublic.INSTANCE.doCmdSync(LIST_COMMAND).split("\n");
+            for (String row : rows) {
+                if (isFristRow) {
+                    isFristRow = false;
+                    continue;
+                }
 
-            ProcessInfo processInfo = readRow(row.trim());
-            if (processInfo != null) {
-                processInfoList.add(processInfo);
+                ProcessInfo processInfo = readRow(row.trim());
+                if (processInfo != null) {
+                    processInfoList.add(processInfo);
+                }
             }
         }
         return processInfoList;
@@ -120,19 +143,22 @@ public class ProcessUtils {
 
     // 获取进程详情
     public ProcessInfo getProcessDetail(int pid) {
-        // Log.d("Scene-Process", PS_COMMAND + " --pid " + pid);
-
-        String[] rows = KeepShellPublic.INSTANCE.doCmdSync(PS_COMMAND + " --pid " + pid).split("\n");
-        if (rows.length > 1) {
-            ProcessInfo row = readRow(rows[1].trim());
-            if (row != null) {
-                row.cpuSet = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/cpuset");
-                row.cGroup = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/cgroup");
-                row.oomAdj = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/oom_adj");
-                row.oomScore = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/oom_score");
-                row.oomScoreAdj = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/oom_score_adj");
+        if (DETAIL_COMMAND != null) {
+            String r = KeepShellPublic.INSTANCE.doCmdSync(DETAIL_COMMAND + pid);
+            Log.d("Scene-SWAP", DETAIL_COMMAND + pid);
+            Log.d("Scene-SWAP", "" + r);
+            String[] rows = r.split("\n");
+            if (rows.length > 1) {
+                ProcessInfo row = readRow(rows[1].trim());
+                if (row != null) {
+                    row.cpuSet = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/cpuset");
+                    row.cGroup = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/cgroup");
+                    row.oomAdj = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/oom_adj");
+                    row.oomScore = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/oom_score");
+                    row.oomScoreAdj = KernelProrp.INSTANCE.getProp("/proc/" + pid + "/oom_score_adj");
+                }
+                return row;
             }
-            return row;
         }
         return null;
     }

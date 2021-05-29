@@ -160,7 +160,7 @@
                         android:layout_width="60dp"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="@dimen/activity_horizontal_margin"
-                        android:text="任务动作" />
+                        android:text="内置命令" />
 
                     <LinearLayout
                         android:id="@+id/task_standby_mode"
@@ -182,125 +182,35 @@
                             android:id="@+id/task_standby_on"
                             android:layout_width="110dp"
                             android:layout_height="wrap_content"
-                            android:text="开" />
+                            android:text="开启" />
 
                         <RadioButton
                             android:id="@+id/task_standby_off"
                             android:layout_width="110dp"
                             android:layout_height="wrap_content"
-                            android:text="关" />
+                            android:text="关闭" />
                     </LinearLayout>
 
                     <LinearLayout
+                        style="@style/InCardListItem"
+                        android:layout_marginHorizontal="4dp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:orientation="vertical">
 
                         <TextView
-                            android:layout_width="0dp"
+                            style="@style/textSmall"
+                            android:textColor="@android:color/holo_red_dark"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:paddingStart="7dp"
-                            android:text="飞行模式"
-                            android:textColor="?android:textColorPrimary" />
+                            android:text="待机模式是Scene设计的一项功能，进入待机模式时会禁用所有冻结名单中的应用从而减少后台活动。应用冻结状态下图标将显示为灰色，点击时提示“此应用由ROOT管理”。" />
 
-                        <RadioButton
-                            android:id="@+id/task_airplane_mode_on"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="开" />
-
-                        <RadioButton
-                            android:id="@+id/task_airplane_mode_off"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="关" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:paddingStart="7dp"
-                            android:text="WIFI"
-                            android:textColor="?android:textColorPrimary" />
-
-                        <RadioButton
-                            android:id="@+id/task_wifi_on"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="开" />
-
-                        <RadioButton
-                            android:id="@+id/task_wifi_off"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="关" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:paddingStart="7dp"
-                            android:text="定位功能"
-                            android:textColor="?android:textColorPrimary" />
-
-                        <RadioButton
-                            android:id="@+id/task_gps_on"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="开" />
-
-                        <RadioButton
-                            android:id="@+id/task_gps_off"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="关" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:paddingStart="7dp"
-                            android:text="2/3/4/5G"
-                            android:textColor="?android:textColorPrimary" />
-
-                        <RadioButton
-                            android:id="@+id/task_gprs_on"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="开" />
-
-                        <RadioButton
-                            android:id="@+id/task_gprs_off"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="关" />
                     </LinearLayout>
 
                     <LinearLayout
                         android:id="@+id/task_zen_mode"
+                        android:visibility="gone"
+                        android:layout_marginTop="10dp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center_vertical"
@@ -327,33 +237,6 @@
                             android:text="关" />
                     </LinearLayout>
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:paddingStart="7dp"
-                            android:text="手机电源"
-                            android:textColor="?android:textColorPrimary" />
-
-                        <RadioButton
-                            android:id="@+id/task_power_off"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="关机" />
-
-                        <RadioButton
-                            android:id="@+id/task_power_reboot"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="重启" />
-                    </LinearLayout>
-
                 </LinearLayout>
 
                 <LinearLayout
@@ -361,63 +244,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-
-                    <TextView
-                        style="@style/textTitle"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="@dimen/activity_horizontal_margin"
-                        android:text="维护任务" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/activity_vertical_margin"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:paddingStart="7dp"
-                            android:text="磁盘维护"
-                            android:textColor="?android:textColorPrimary" />
-
-                        <CheckBox
-                            android:id="@+id/task_fstrim"
-                            android:layout_width="220dp"
-                            android:layout_height="wrap_content"
-                            android:text="fstrim" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/task_compile"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:paddingStart="7dp"
-                            android:text="dex2oat编译"
-                            android:textColor="?android:textColorPrimary" />
-
-                        <RadioButton
-                            android:id="@+id/task_compile_speed"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="speed" />
-
-                        <RadioButton
-                            android:id="@+id/task_compile_everything"
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="everything" />
-                    </LinearLayout>
 
                     <LinearLayout
                         android:id="@+id/task_mode_switch"
@@ -471,33 +297,37 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <TextView
-                        style="@style/textTitle"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="@dimen/activity_horizontal_margin"
-                        android:text="说明提示" />
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <TextView
+                            style="@style/textTitle"
+                            android:layout_centerVertical="true"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="@dimen/activity_horizontal_margin"
+                            android:text="自定义命令" />
+
+                        <ImageButton
+                            android:id="@+id/task_custom_edit"
+                            android:layout_centerVertical="true"
+                            android:tint="?android:colorAccent"
+                            android:padding="5dp"
+                            android:layout_alignParentEnd="true"
+                            android:src="@drawable/edit"
+                            android:scaleType="centerInside"
+                            android:background="@null"
+                            android:layout_width="30dp"
+                            android:layout_height="30dp" />
+                    </RelativeLayout>
 
                     <TextView
+                        android:id="@+id/task_custom_actions"
+                        android:padding="8dp"
                         style="@style/textSmall"
+                        android:background="@drawable/in_card_item"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/activity_vertical_margin"
-                        android:text="[待机模式] 是Scene的一项功能，其原理是冻结所有第三方应用，从而避免待机时由于后台活动掉电过快，要求Android P及更高版本！你可以在系统场景的设置界面，设置冻结名单。" />
-
-                    <TextView
-                        style="@style/textSmall"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/activity_vertical_margin"
-                        android:text="[FSTRIM] 操作有助于缓解闪存读写导致的速度下降，大多数情况下系统会自动择机运行，当然如果你乐意也可以添加到定时任务中。" />
-
-                    <TextView
-                        style="@style/textSmall"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/activity_vertical_margin"
-                        android:text="[注意] 关机、重启会导致dex2oat编译被中断，请不要同时勾选这两种操作。" />
+                        android:layout_height="wrap_content" />
                 </LinearLayout>
             </LinearLayout>
         </com.omarea.common.ui.OverScrollView>

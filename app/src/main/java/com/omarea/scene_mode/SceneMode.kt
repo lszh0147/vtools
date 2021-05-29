@@ -15,26 +15,26 @@ import com.omarea.library.shell.SwapUtils
 import com.omarea.model.SceneConfigInfo
 import com.omarea.store.SceneConfigStore
 import com.omarea.store.SpfConfig
-import com.omarea.vtools.R
+import com.omarea.vtools.AccessibilityScenceMode
+import com.omarea.vtools.popup.FloatMonitorGame
 import com.omarea.vtools.popup.FloatScreenRotation
 import java.util.*
 import kotlin.collections.ArrayList
 
-
-class SceneMode private constructor(private val context: Context, private var store: SceneConfigStore) {
+class SceneMode private constructor(private val context: AccessibilityScenceMode, private var store: SceneConfigStore) {
     private var lastAppPackageName = "com.android.systemui"
     private var contentResolver: ContentResolver = context.contentResolver
     private var freezList = ArrayList<FreezeAppHistory>()
     private val config = context.getSharedPreferences(SpfConfig.GLOBAL_SPF, Context.MODE_PRIVATE)
 
     // 偏见应用解冻数量限制
-    private val freezAppLimit: Int
+    private val freezeAppLimit: Int
         get() {
             return config.getInt(SpfConfig.GLOBAL_SPF_FREEZE_ITEM_LIMIT, 5)
         }
 
     // 偏见应用后台超时时间
-    private val freezAppTimeLimit: Int
+    private val freezeAppTimeLimit: Int
         get() {
             return config.getInt(SpfConfig.GLOBAL_SPF_FREEZE_TIME_LIMIT, 2) * 60 * 1000
         }
@@ -75,7 +75,7 @@ class SceneMode private constructor(private val context: Context, private var st
         }
 
         // 获取当前实例或初始化
-        fun getInstanceOrInit(context: Context, store: SceneConfigStore): SceneMode? {
+        fun getInstanceOrInit(context: AccessibilityScenceMode, store: SceneConfigStore): SceneMode? {
             if (instance == null) {
                 synchronized(SceneMode::class) {
                     instance = SceneMode(context, store)
@@ -132,8 +132,6 @@ class SceneMode private constructor(private val context: Context, private var st
 
         freezList.add(history)
         clearFreezeAppCountLimit()
-
-
     }
 
     fun setFreezeAppStartTime(packageName: String) {
@@ -160,21 +158,33 @@ class SceneMode private constructor(private val context: Context, private var st
 
     // 当解冻的偏见应用数量超过限制，冻结最先解冻的应用
     fun clearFreezeAppCountLimit() {
-        if (freezAppLimit > 0) {
-            while (freezList.size > freezAppLimit) {
-                freezeApp(freezList.first())
+        if (freezeAppLimit > 0 && freezList.size > freezeAppLimit) {
+            val foregroundApps = context.getForegroundApps()
+            while (freezList.size > freezeAppLimit) {
+                val app = freezList.first()
+                if (!foregroundApps.contains(app.packageName)) {
+                    freezeApp(app)
+                }
             }
         }
     }
 
     // 冻结已经后台超时的偏见应用
     fun clearFreezeAppTimeLimit() {
-        val freezAppTimeLimit = this.freezAppTimeLimit
+        val freezAppTimeLimit = this.freezeAppTimeLimit
         if (freezAppTimeLimit > 0) {
             val currentTime = System.currentTimeMillis()
-            freezList.filter {
+            val targetApps = freezList.filter {
                 it.leaveTime > -1 && currentTime - it.leaveTime > freezAppTimeLimit && it.packageName != lastAppPackageName
-            }.forEach { freezeApp(it) }
+            }
+            if (targetApps.isNotEmpty()) {
+                val foregroundApps = context.getForegroundApps()
+                targetApps.forEach {
+                    if(!foregroundApps.contains(it.packageName)) {
+                        freezeApp(it)
+                    }
+                }
+            }
         }
     }
 
@@ -277,6 +287,8 @@ class SceneMode private constructor(private val context: Context, private var st
     }
 
     private var locationMode = "none"
+    // 是否需要在离开应用时隐藏迷你性能监视器
+    private var hideMonitorOnLeave = false
 
     // 备份定位设置
     private fun backupLocationModeState() {
@@ -350,11 +362,11 @@ class SceneMode private constructor(private val context: Context, private var st
                 CGroupMemoryUtlis(Scene.context).run {
                     if (isSupported) {
                         if (sceneConfigInfo.bgCGroupMem?.isNotEmpty() == true) {
-                            setGroup(sceneConfigInfo.packageName!!, sceneConfigInfo.bgCGroupMem)
+                            setGroupAutoDelay(this, sceneConfigInfo.packageName!!, sceneConfigInfo.bgCGroupMem)
                             // Scene.toast(sceneConfigInfo.packageName!! + "退出，cgroup调为[${sceneConfigInfo.bgCGroupMem}]\n(Scene试验性功能)")
                         } else {
-                            setGroup(sceneConfigInfo.packageName!!, context.getString(R.string.cgroup_mem_default))
-                            // Scene.toast(sceneConfigInfo.packageName!! + "退出，cgroup调为[scene_def]\n(Scene试验性功能)")
+                            setGroup(sceneConfigInfo.packageName!!, "")
+                            // Scene.toast(sceneConfigInfo.packageName!! + "退出，cgroup调为[/]\n(Scene试验性功能)")
                         }
                     } else {
                         Scene.toast("你的内核不支持cgroup设置！\n(Scene试验性功能)")
@@ -375,7 +387,7 @@ class SceneMode private constructor(private val context: Context, private var st
         synchronized(this) {
             try {
                 lastAppPackageName = packageName
-                if (currentSceneConfig != null) {
+                if (currentSceneConfig != null && currentSceneConfig?.packageName != packageName) {
                     onAppLeave(currentSceneConfig!!)
                 }
 
@@ -391,6 +403,19 @@ class SceneMode private constructor(private val context: Context, private var st
                         autoLightOff(currentSceneConfig!!.aloneLightValue)
                     } else {
                         resumeBrightnessState()
+                    }
+
+                    if (currentSceneConfig!!.showMonitor) {
+                        if (FloatMonitorGame.show != true) {
+                            Scene.post {
+                                hideMonitorOnLeave = FloatMonitorGame(context).showPopupWindow()
+                            }
+                        }
+                    } else if (hideMonitorOnLeave) {
+                        Scene.post {
+                            FloatMonitorGame(context).hidePopupWindow()
+                        }
+                        hideMonitorOnLeave = false
                     }
 
                     if (currentSceneConfig!!.gpsOn) {
@@ -422,7 +447,7 @@ class SceneMode private constructor(private val context: Context, private var st
                     }
 
                     // 实验性新特性（cgroup/memory自动配置）
-                    if (currentSceneConfig?.fgCGroupMem?.isNotEmpty() == true) {
+                    if (currentSceneConfig?.fgCGroupMem?.isNotEmpty() == true || currentSceneConfig?.bgCGroupMem != currentSceneConfig?.fgCGroupMem) {
                         CGroupMemoryUtlis(Scene.context).run {
                             if (isSupported) {
                                 setGroup(currentSceneConfig!!.packageName!!, currentSceneConfig!!.fgCGroupMem)
@@ -445,6 +470,24 @@ class SceneMode private constructor(private val context: Context, private var st
             } catch (ex: Exception) {
                 Log.e(">>>>", "" + ex.message)
             }
+        }
+    }
+
+    private fun setGroupAutoDelay(util: CGroupMemoryUtlis, app: String, mode: String) {
+        if (mode == "scene_limit") {
+            Scene.postDelayed({
+                if (currentSceneConfig?.packageName != app) {
+                    util.setGroup(app, mode)
+                }
+            }, 3000)
+        } else if (mode == "scene_limit2") {
+            Scene.postDelayed({
+                if (currentSceneConfig?.packageName != app) {
+                    util.setGroup(app, mode)
+                }
+            }, 8000)
+        } else {
+            util.setGroup(app, mode)
         }
     }
 

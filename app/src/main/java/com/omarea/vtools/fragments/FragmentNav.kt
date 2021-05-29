@@ -20,6 +20,8 @@ import com.omarea.shell_utils.BackupRestoreUtils
 import com.omarea.utils.AccessibleServiceHelper
 import com.omarea.vtools.R
 import com.omarea.vtools.activities.*
+import com.omarea.vtools.dialogs.DialogXposedGlobalConfig
+import com.omarea.xposed.XposedCheck
 import com.projectkr.shell.OpenPageHelper
 import kotlinx.android.synthetic.main.fragment_nav.*
 
@@ -168,10 +170,6 @@ class FragmentNav : Fragment(), View.OnClickListener {
                 Toast.makeText(context, "没有获得ROOT权限，不能使用本功能", Toast.LENGTH_SHORT).show()
                 return
             }
-            val transaction = activity!!.supportFragmentManager.beginTransaction()
-            transaction.setTransition(androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-            // transaction.setCustomAnimations(R.animator.fragment_enter, R.animator.fragment_exit)
-            var fragment: Fragment? = null
 
             when (id) {
                 R.id.nav_freeze -> {
@@ -242,7 +240,7 @@ class FragmentNav : Fragment(), View.OnClickListener {
                     startActivity(sendIntent)
                 }
                 R.id.nav_app_scene -> {
-                    val intent = Intent(context, ActivityAppConfig::class.java)
+                    val intent = Intent(context, ActivityAppConfig2::class.java)
                     startActivity(intent)
                     return
                 }
@@ -256,9 +254,31 @@ class FragmentNav : Fragment(), View.OnClickListener {
                     startActivity(intent)
                     return
                 }
+                R.id.nav_auto_click -> {
+                    val intent = Intent(context, ActivityAutoClick::class.java)
+                    startActivity(intent)
+                    return
+                }
                 R.id.nav_app_magisk -> {
                     val intent = Intent(context, ActivityMagisk::class.java)
                     startActivity(intent)
+                    return
+                }
+                R.id.nav_xposed_app -> {
+                    if (XposedCheck.xposedIsRunning()) {
+                        val intent = Intent(context, ActivityAppXposedConfig::class.java)
+                        startActivity(intent)
+                    } else {
+                        Toast.makeText(context, "请先在Xposed管理器中重新勾选“Scene”，并重启手机", Toast.LENGTH_LONG).show()
+                    }
+                    return
+                }
+                R.id.nav_xposed_global -> {
+                    if (XposedCheck.xposedIsRunning()) {
+                        DialogXposedGlobalConfig(activity!!).show()
+                    } else {
+                        Toast.makeText(context, "请先在Xposed管理器中重新勾选“Scene”，并重启手机", Toast.LENGTH_LONG).show()
+                    }
                     return
                 }
                 R.id.nav_gesture -> {
@@ -289,17 +309,6 @@ class FragmentNav : Fragment(), View.OnClickListener {
                     }
                     return
                 }
-            }
-
-            if (fragment != null) {
-                // configlist_tabhost.currentTab = 1
-
-                // transaction.disallowAddToBackStack()
-                transaction.replace(R.id.app_more, fragment)
-                transaction.addToBackStack(null);
-                transaction.commitAllowingStateLoss()
-
-                //item.isChecked = true
             }
         }
     }

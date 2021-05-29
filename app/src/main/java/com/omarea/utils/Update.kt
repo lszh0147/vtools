@@ -1,7 +1,6 @@
 package com.omarea.utils
 
 
-import android.app.AlertDialog
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
@@ -14,7 +13,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.omarea.common.ui.DialogHelper
-import com.omarea.vtools.R
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -41,7 +39,7 @@ class Update {
         Thread(Runnable {
             //http://47.106.224.127/
             try {
-                val url = URL("https://vtools.oss-cn-beijing.aliyuncs.com/vi/Scene3.json")
+                val url = URL("https://vtools.oss-cn-beijing.aliyuncs.com/vi/Scene4.json")
                 val connection = url.openConnection()
                 // 设置连接方式：get
                 // connection.setRequestMethod("GET");
@@ -85,10 +83,10 @@ class Update {
     }
 
     private fun update(context: Context, jsonObject: JSONObject) {
-        DialogHelper.animDialog(AlertDialog.Builder(context)
-                .setTitle("下载新版本" + jsonObject.getString("versionName") + " ？")
-                .setMessage("更新内容：" + "\n\n" + jsonObject.getString("message"))
-                .setPositiveButton(R.string.btn_confirm) { _, _ ->
+        DialogHelper.confirm(context,
+                "下载新版本" + jsonObject.getString("versionName") + " ？",
+                "更新内容：" + "\n\n" + jsonObject.getString("message"),
+                {
                     var downloadUrl = "http://vtools.oss-cn-beijing.aliyuncs.com/app-release${jsonObject.getInt("versionCode")}.apk"// "http://47.106.224.127/publish/app-release.apk"
                     if (jsonObject.has("downloadUrl")) {
                         downloadUrl = jsonObject.getString("downloadUrl")
@@ -126,9 +124,7 @@ class Update {
                         }
                     }, intentFilter)
                     */
-                }
-                .setNegativeButton(R.string.btn_cancel) { _, _ -> }
-                .setCancelable(false))
+                })
     }
 
     fun getRealFilePath(context: Context, uri: Uri?): String? {

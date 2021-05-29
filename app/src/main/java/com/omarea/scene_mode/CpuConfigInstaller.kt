@@ -1,7 +1,6 @@
 package com.omarea.scene_mode
 
 import android.content.Context
-import android.util.Log
 import com.omarea.Scene
 import com.omarea.common.shared.FileWrite
 import com.omarea.common.shell.KeepShellPublic
@@ -11,7 +10,6 @@ import com.omarea.store.CpuConfigStorage
 import com.omarea.store.SpfConfig
 import java.io.File
 import java.nio.charset.Charset
-import java.util.*
 
 class CpuConfigInstaller {
     val rootDir = "powercfg"
@@ -40,8 +38,11 @@ class CpuConfigInstaller {
             return false
         }
         try {
-            val powercfg = FileWrite.writePrivateShellFile(getPowerCfgDir() + (if (active) "/active.sh" else "/conservative.sh"), "powercfg.sh", context)
-            val powercfgBase = FileWrite.writePrivateShellFile(getPowerCfgDir() + (if (active) "/active-base.sh" else "/conservative-base.sh"), "powercfg-base.sh", context)
+            val dir = getPowerCfgDir()
+            val powercfg = FileWrite.writePrivateShellFile(dir + (if (active) "/active.sh" else "/conservative.sh"), "powercfg.sh", context)
+            val powercfgBase = FileWrite.writePrivateShellFile(dir + (if (active) "/active-base.sh" else "/conservative-base.sh"), "powercfg-base.sh", context)
+            // 工具函数
+            FileWrite.writePrivateShellFile(dir + "/powercfg-utils.sh", "powercfg-utils.sh", context)
 
             if (powercfg == null) {
                 return false

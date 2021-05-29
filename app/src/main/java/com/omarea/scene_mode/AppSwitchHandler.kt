@@ -22,7 +22,11 @@ import com.omarea.model.TimingTaskInfo
 import com.omarea.store.SceneConfigStore
 import com.omarea.store.SpfConfig
 import com.omarea.utils.CommonCmds
+import com.omarea.vtools.AccessibilityScenceMode
 import com.omarea.vtools.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -30,8 +34,7 @@ import kotlin.collections.ArrayList
  *
  * Created by helloklf on 2016/10/1.
  */
-class AppSwitchHandler(private var context: Context, override val isAsync: Boolean = false) : ModeSwitcher(), IEventReceiver {
-    private var systemScene = SystemScene(context)
+class AppSwitchHandler(private var context: AccessibilityScenceMode, override val isAsync: Boolean = false) : ModeSwitcher(), IEventReceiver {
     private var lastPackage: String? = null
     private var lastModePackage: String? = "com.system.ui"
     private var lastMode = ""
@@ -104,8 +107,8 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
     /**
      * 屏幕关闭时执行
      */
-    private fun _onScreenOff() {
-        if (screenOn == false)
+    private fun onScreenOff() {
+        if (!screenOn)
             return
 
         screenOn = false
@@ -120,7 +123,15 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
             if (!screenOn) {
                 notifyHelper.hideNotify()
                 stopTimer()
-                setTimingTask();
+                setTimingTask()
+
+                // 息屏后自动切换为省电模式
+                if (dyamicCore && lastMode.isNotEmpty()) {
+                    val sleepMode = spfGlobal.getString(SpfConfig.GLOBAL_SPF_POWERCFG_SLEEP_MODE, POWERSAVE)
+                    if (sleepMode != null && sleepMode != IGONED) {
+                        toggleConfig(sleepMode, context.packageName)
+                    }
+                }
             }
         }, 10000)
     }
@@ -132,7 +143,6 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
         if (!screenOn) {
             if (System.currentTimeMillis() - lastScreenOnOff >= SCREEN_OFF_SWITCH_NETWORK_DELAY) {
                 sceneMode.onScreenOffDelay()
-                systemScene.onScreenOff()
                 System.gc()
             }
         }
@@ -141,20 +151,23 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
     /**
      * 点亮屏幕且解锁后执行
      */
-    private fun _onScreenOn() {
+    private fun onScreenOn() {
         lastScreenOnOff = System.currentTimeMillis()
 
-        if (dyamicCore && lastMode.isNotEmpty()) {
-            toggleConfig(lastMode)
-        }
+        handler.postDelayed({
+            if (dyamicCore && lastMode.isNotEmpty()) {
+                lastPackage = null
+                lastModePackage = null
+                context.notifyScreenOn()
+                // toggleConfig(lastMode, context.packageName)
+            }
+        }, 1000)
         sceneMode.onScreenOn()
 
         if (!screenOn) {
             screenOn = true
             startTimer() // 屏幕开启后开始定时更新通知
             updateModeNofity() // 屏幕点亮后更新通知
-
-            systemScene.onScreenOn()
         }
     }
 
@@ -203,13 +216,12 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
             if (dyamicCore) {
                 val mode = spfPowercfg.getString(packageName, firstMode)!!
                 if (
-                        mode != IGONED &&
-                        (lastMode != mode || spfGlobal.getBoolean(SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL_STRICT, false))
+                        mode != IGONED && (lastMode != mode || spfGlobal.getBoolean(SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL_STRICT, false))
                 ) {
                     if (spfGlobal.getBoolean(SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL_DELAY, false)) {
-                        delayToggleConfig(mode)
+                        delayToggleConfig(mode, packageName)
                     } else {
-                        toggleConfig(mode)
+                        toggleConfig(mode, packageName)
                     }
                 }
             }
@@ -219,15 +231,15 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
         }
     }
 
-    private fun toggleConfig(mode: String) {
-        executePowercfgMode(mode)
+    private fun toggleConfig(mode: String, packageName: String) {
+        executePowercfgMode(mode, packageName)
         lastMode = mode
     }
 
-    private fun delayToggleConfig(mode: String) {
+    private fun delayToggleConfig(mode: String, packageName: String) {
         handler.postDelayed({
             if (lastMode == mode) {
-                executePowercfgMode(mode)
+                executePowercfgMode(mode, packageName)
             }
         }, 5000)
         lastMode = mode
@@ -237,13 +249,13 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
     override fun onReceive(eventType: EventType) {
         when (eventType) {
             EventType.APP_SWITCH ->
-                onFocusAppChanged(GlobalStatus.lastPackageName)
+                onFocusedAppChanged(GlobalStatus.lastPackageName)
             EventType.SCREEN_ON -> {
-                _onScreenOn()
+                onScreenOn()
             }
             EventType.SCREEN_OFF -> {
                 if (ScreenState(context).isScreenLocked()) {
-                    _onScreenOff()
+                    onScreenOff()
                 }
             }
             else -> return
@@ -260,9 +272,9 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
     /**
      * 焦点应用改变
      */
-    fun onFocusAppChanged(packageName: String) {
+    private fun onFocusedAppChanged(packageName: String) {
         if (!screenOn && screenState.isScreenOn()) {
-            _onScreenOn() // 如果切换应用时发现屏幕出于开启状态 而记录的状态是关闭，通知开启
+            onScreenOn() // 如果切换应用时发现屏幕出于开启状态 而记录的状态是关闭，通知开启
         }
 
         if (lastPackage == packageName || ignoredList.contains(packageName) || sceneBlackList.contains(packageName)) return
@@ -289,7 +301,7 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
             context.unregisterReceiver(sceneAppChanged)
             sceneAppChanged = null
         }
-        EventBus.subscibe(notifyHelper)
+        EventBus.unsubscibe(notifyHelper)
         EventBus.unsubscibe(this)
     }
 
@@ -300,6 +312,21 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
         ignoredList.addAll(context.resources.getStringArray(R.array.powercfg_force_igoned))
         // 添加输入法到忽略列表
         ignoredList.addAll(InputMethodApp(context).getInputMethods())
+
+        if (spfPowercfg.all.isEmpty()) {
+            for (item in context.resources.getStringArray(R.array.powercfg_igoned)) {
+                spfPowercfg.edit().putString(item, IGONED).apply()
+            }
+            for (item in context.resources.getStringArray(R.array.powercfg_fast)) {
+                spfPowercfg.edit().putString(item, FAST).apply()
+            }
+            for (item in context.resources.getStringArray(R.array.powercfg_game)) {
+                spfPowercfg.edit().putString(item, PERFORMANCE).apply()
+            }
+            for (item in context.resources.getStringArray(R.array.powercfg_powersave)) {
+                spfPowercfg.edit().putString(item, POWERSAVE).apply()
+            }
+        }
 
         if (spfGlobal.getBoolean(SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL, SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL_DEFAULT)) {
             // 是否已经完成性能调节配置安装或自定义
@@ -330,30 +357,38 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
             KeepShellPublic.doCmdSync(CommonCmds.DisableSELinux)
         }
 
-        Thread(Runnable {
+        GlobalScope.launch (Dispatchers.IO) {
             initConfig()
-        }).start()
+        }
 
         sceneConfigChanged = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
+                val pendingResult = goAsync()
+
                 updateConfig()
                 Scene.toast("性能调节配置参数已更新，将在下次切换应用时生效！", Toast.LENGTH_SHORT)
+
+                pendingResult.finish()
             }
         }
 
         sceneAppChanged = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
+                val pendingResult = goAsync()
+
                 val extras = intent.extras
                 if (extras != null && extras.containsKey("app")) {
                     if (extras.containsKey("mode")) {
                         val mode = intent.getStringExtra("mode")!!
                         val app = intent.getStringExtra("app")
-                        if (dyamicCore && screenOn && app == lastModePackage) {
-                            toggleConfig(mode)
+                        if (dyamicCore && screenOn && app != null && app == lastModePackage) {
+                            toggleConfig(mode, app)
                         }
                     }
                     sceneMode.updateAppConfig()
                 }
+
+                pendingResult.finish()
             }
         }
 
@@ -361,5 +396,6 @@ class AppSwitchHandler(private var context: Context, override val isAsync: Boole
         context.registerReceiver(sceneAppChanged, IntentFilter(context.getString(R.string.scene_appchange_action)))
 
         EventBus.subscibe(notifyHelper)
+        EventBus.subscibe(this)
     }
 }

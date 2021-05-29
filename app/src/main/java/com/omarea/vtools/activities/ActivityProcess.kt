@@ -67,7 +67,7 @@ class ActivityProcess : ActivityBase() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 (process_list.adapter as AdapterProcess?)?.updateSortMode(when (position) {
                     0 -> AdapterProcess.SORT_MODE_CPU
-                    1 -> AdapterProcess.SORT_MODE_MEM
+                    1 -> AdapterProcess.SORT_MODE_RES
                     2 -> AdapterProcess.SORT_MODE_PID
                     else -> AdapterProcess.SORT_MODE_DEFAULT
                 })
@@ -176,7 +176,7 @@ class ActivityProcess : ActivityBase() {
             } catch (ex: java.lang.Exception) {
                 detail.friendlyName = name
             }
-            val dialog = DialogHelper.customDialogBlurBg(this, view)
+            val dialog = DialogHelper.customDialog(this, view)
 
             /*
             # Android Q 可通过 /proc/[pid]/reclaim 手动回收内存
@@ -219,10 +219,15 @@ class ActivityProcess : ActivityBase() {
                 findViewById<TextView>(R.id.ProcessOOMADJ).text = "" + detail.oomAdj
                 findViewById<TextView>(R.id.ProcessOOMScoreAdj).text = "" + detail.oomScoreAdj
                 findViewById<TextView>(R.id.ProcessState).text = detail.getState()
-                if (processInfo.res > 8192) {
+                if (detail.res > 8192) {
                     findViewById<TextView>(R.id.ProcessMEM).text = (detail.res / 1024).toInt().toString() + "MB"
                 } else {
                     findViewById<TextView>(R.id.ProcessMEM).text = detail.res.toString() + "KB"
+                }
+                if (detail.swap > 8192) {
+                    findViewById<TextView>(R.id.ProcessSWAP).text = (detail.swap / 1024).toInt().toString() + "MB"
+                } else {
+                    findViewById<TextView>(R.id.ProcessSWAP).text = detail.swap.toString() + "KB"
                 }
                 findViewById<TextView>(R.id.ProcessUSER).text = processInfo.user
                 if (isAndroidProcess(processInfo)) {

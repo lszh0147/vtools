@@ -3,12 +3,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingLeft="4dp"
-    android:paddingRight="4dp">
+    android:orientation="horizontal">
 
     <EditText
         android:id="@+id/kr_param_color_text"
+        android:minHeight="35dp"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"

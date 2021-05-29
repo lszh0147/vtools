@@ -9,6 +9,7 @@ import android.text.Layout
 import android.util.Log
 import android.util.Xml
 import android.widget.Toast
+import com.omarea.common.model.SelectItem
 import com.omarea.krscript.executor.ExtractAssets
 import com.omarea.krscript.executor.ScriptEnvironmen
 import com.omarea.krscript.model.*
@@ -215,6 +216,8 @@ class PageConfigReader {
             summaryNode(action, parser)
         } else if ("script" == parser.name || "set" == parser.name || "setstate" == parser.name) {
             action.setState = parser.nextText().trim()
+        } else if ("lock" == parser.name || "lock-state" == parser.name) {
+            action.lockShell = parser.nextText()
         } else if ("param" == parser.name) {
             if (actionParamInfos == null) {
                 actionParamInfos = ArrayList()
@@ -258,7 +261,7 @@ class PageConfigReader {
                     }
                     attrName == "options-sh" || attrName == "option-sh" || attrName == "options-su" -> {
                         if (actionParamInfo.options == null)
-                            actionParamInfo.options = ArrayList<ActionParamInfo.ActionParamOption>()
+                            actionParamInfo.options = ArrayList<SelectItem>()
                         val script = attrValue
                         actionParamInfo.optionsSh = script
                     }
@@ -286,16 +289,16 @@ class PageConfigReader {
             if (actionParamInfo.options == null) {
                 actionParamInfo.options = ArrayList()
             }
-            val option = ActionParamInfo.ActionParamOption()
+            val option = SelectItem()
             for (i in 0 until parser.attributeCount) {
                 val attrName = parser.getAttributeName(i)
                 if (attrName == "val" || attrName == "value") {
                     option.value = parser.getAttributeValue(i)
                 }
             }
-            option.desc = parser.nextText()
+            option.title = parser.nextText()
             if (option.value == null)
-                option.value = option.desc
+                option.value = option.title
             actionParamInfo.options!!.add(option)
         } else if ("resource" == parser.name) {
             resourceNode(parser)
@@ -324,6 +327,7 @@ class PageConfigReader {
             "html" -> node.onlineHtmlPage = parser.nextText()
             "config" -> node.pageConfigPath = parser.nextText()
             "handler-sh", "handler", "set", "getstate", "script" -> node.pageHandlerSh = parser.nextText()
+            "lock", "lock-state" -> node.lockShell = parser.nextText()
             "option", "page-option", "menu", "menu-item" -> {
                 val option = runnableNode(PageMenuOption(pageConfigAbsPath), parser) as PageMenuOption?
                 if (option != null) {
@@ -371,6 +375,7 @@ class PageConfigReader {
             "get", "getstate" -> switchNode.getState = parser.nextText()
             "set", "setstate" -> switchNode.setState = parser.nextText()
             "resource" -> resourceNode(parser)
+            "lock", "lock-state" -> switchNode.lockShell = parser.nextText()
         }
     }
 
@@ -390,23 +395,23 @@ class PageConfigReader {
 
     // 通常指 page、action、switch、picker这种，可以点击的节点
     private fun clickbleNode(clickableNode: ClickableNode, parser: XmlPullParser): ClickableNode? {
-        val runnableNode = mainNode(clickableNode, parser) as ClickableNode?
-        if (runnableNode != null) {
+        return (mainNode(clickableNode, parser) as ClickableNode?)?.apply {
             for (i in 0 until parser.attributeCount) {
                 val attrValue = parser.getAttributeValue(i)
                 when (parser.getAttributeName(i)) {
-                    "icon", "icon-path" -> runnableNode.iconPath = attrValue.trim()
-                    "logo", "logo-path" -> runnableNode.logoPath = attrValue.trim()
-                    "allow-shortcut" -> runnableNode.allowShortcut = attrValue == "allow" || attrValue == "allow-shortcut" || attrValue == "true" || attrValue == "1"
+                    "lock", "lock-state", "locked" -> locked = (attrValue == "1" || attrValue == "true" || attrValue == "locked")
+                    "min-sdk", "sdk-min" -> minSdkVersion = attrValue.trim().toInt()
+                    "max-sdk", "sdk-max" -> maxSdkVersion = attrValue.trim().toInt()
+                    "target-sdk", "sdk-target" -> targetSdkVersion = attrValue.trim().toInt()
+                    "icon", "icon-path" -> iconPath = attrValue.trim()
+                    "logo", "logo-path" -> logoPath = attrValue.trim()
+                    "allow-shortcut" -> allowShortcut = attrValue == "allow" || attrValue == "allow-shortcut" || attrValue == "true" || attrValue == "1"
                 }
             }
-        }
-        if (runnableNode != null) {
-            if (runnableNode.key.isNotEmpty() && runnableNode.key.startsWith("@") && runnableNode.allowShortcut == null) {
-                runnableNode.allowShortcut = false
+            if (key.isNotEmpty() && key.startsWith("@") && allowShortcut == null) {
+                allowShortcut = false
             }
         }
-        return runnableNode
     }
 
     // 通常指 action、switch、picker这种，点击后需要执行脚本的节点
@@ -417,6 +422,9 @@ class PageConfigReader {
                 val attrValue = parser.getAttributeValue(i)
                 when (parser.getAttributeName(i)) {
                     "confirm" -> clickableNode.confirm = (attrValue == "confirm" || attrValue == "true" || attrValue == "1")
+                    "warn", "warning" -> {
+                        clickableNode.warning = attrValue
+                    }
                     "auto-off", "auto-close" -> clickableNode.autoOff = (attrValue == "auto-close" || attrValue == "auto-off" || attrValue == "true" || attrValue == "1")
                     "auto-finish" -> clickableNode.autoFinish = (attrValue == "auto-finish" || attrValue == "true" || attrValue == "1")
                     "interruptible", "interruptable" -> clickableNode.interruptable = (
@@ -632,16 +640,16 @@ class PageConfigReader {
             if (pickerNode.options == null) {
                 pickerNode.options = ArrayList()
             }
-            val option = ActionParamInfo.ActionParamOption()
+            val option = SelectItem()
             for (i in 0 until parser.attributeCount) {
                 val attrName = parser.getAttributeName(i)
                 if (attrName == "val" || attrName == "value") {
                     option.value = parser.getAttributeValue(i)
                 }
             }
-            option.desc = parser.nextText()
+            option.title = parser.nextText()
             if (option.value == null)
-                option.value = option.desc
+                option.value = option.title
             pickerNode.options!!.add(option)
         } else if ("getstate" == parser.name || "get" == parser.name) {
             pickerNode.getState = parser.nextText()
@@ -649,6 +657,8 @@ class PageConfigReader {
             pickerNode.setState = parser.nextText()
         } else if ("resource" == parser.name) {
             resourceNode(parser)
+        } else if ("lock" == parser.name || "lock-state" == parser.name) {
+            pickerNode.lockShell = parser.nextText()
         }
     }
 

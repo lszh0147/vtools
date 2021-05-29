@@ -11,14 +11,16 @@ import androidx.core.app.NotificationCompat
 import com.omarea.common.shell.KeepShell
 import com.omarea.common.shell.KeepShellPublic
 import com.omarea.library.shell.FstrimUtils
-import com.omarea.library.shell.LocationHelper
-import com.omarea.library.shell.NetworkUtils
 import com.omarea.library.shell.ZenModeUtils
+import com.omarea.model.CustomTaskAction
 import com.omarea.model.TaskAction
 import com.omarea.vtools.R
 import java.util.*
 
-class TaskActionsExecutor(private val taskActions: ArrayList<TaskAction>, private val context: Context) {
+class TaskActionsExecutor(
+        private val taskActions: ArrayList<TaskAction>?,
+        private val customTaskActions: ArrayList<CustomTaskAction>?,
+        private val context: Context) {
     private var nm = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
     private lateinit var mPowerManager: PowerManager
@@ -51,46 +53,12 @@ class TaskActionsExecutor(private val taskActions: ArrayList<TaskAction>, privat
         mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "scene:TaskActionsExecutor");
         mWakeLock.acquire(600 * 1000) // 默认限制10分钟
 
-        taskActions.forEach {
+        taskActions?.forEach {
             try {
                 when (it) {
-                    TaskAction.AIRPLANE_MODE_OFF -> {
-                        updateNotification("关闭飞行模式")
-                        NetworkUtils(context).airModeOff()
-                    }
-                    TaskAction.AIRPLANE_MODE_ON -> {
-                        updateNotification("打开飞行模式")
-                        NetworkUtils(context).airModeOn()
-                    }
-                    TaskAction.COMPILE_EVERYTHING -> {
-                        updateNotification("dex2oat everything编译")
-                        everythingDex2oatCompile()
-                    }
-                    TaskAction.COMPILE_SPEED -> {
-                        updateNotification("dex2oat speed编译")
-                        speedDex2oatCompile()
-                    }
                     TaskAction.FSTRIM -> {
                         updateNotification("执行fstrim")
                         FstrimUtils(keepShell).run()
-                    }
-                    TaskAction.GPRS_OFF -> {
-                        updateNotification("关闭数据网络")
-                        NetworkUtils(context).mobileDataOff()
-                    }
-                    TaskAction.GPRS_ON -> {
-                        updateNotification("打开数网络")
-                        if (!taskActions.contains(TaskAction.AIRPLANE_MODE_ON)) {
-                            NetworkUtils(context).mobileDataOn()
-                        }
-                    }
-                    TaskAction.GPS_OFF -> {
-                        updateNotification("关闭GPS定位")
-                        LocationHelper().disableGPS()
-                    }
-                    TaskAction.GPS_ON -> {
-                        updateNotification("打开GPS定位")
-                        LocationHelper().enableGPS()
                     }
                     TaskAction.STANDBY_MODE_OFF -> {
                         updateNotification("关闭待机模式")
@@ -100,16 +68,6 @@ class TaskActionsExecutor(private val taskActions: ArrayList<TaskAction>, privat
                         updateNotification("打开待机模式")
                         SceneStandbyMode(context, keepShell).on()
                     }
-                    TaskAction.WIFI_OFF -> {
-                        updateNotification("关闭WIFI")
-                        NetworkUtils(context).wifiOff()
-                    }
-                    TaskAction.WIFI_ON -> {
-                        updateNotification("打开WIFI")
-                        if (!taskActions.contains(TaskAction.AIRPLANE_MODE_ON)) {
-                            NetworkUtils(context).wifiOn()
-                        }
-                    }
                     TaskAction.ZEN_MODE_ON -> {
                         updateNotification("打开勿扰模式")
                         ZenModeUtils(context).on()
@@ -118,29 +76,21 @@ class TaskActionsExecutor(private val taskActions: ArrayList<TaskAction>, privat
                         updateNotification("关闭勿扰模式")
                         ZenModeUtils(context).off()
                     }
-                    TaskAction.POWER_REBOOT -> {
-                        updateNotification("重启手机")
-                        KeepShellPublic.doCmdSync("sync;svc power reboot || reboot")
-                    }
-                    TaskAction.POWER_OFF -> {
-                        updateNotification("自动关机")
-                        KeepShellPublic.doCmdSync("sync;svc power shutdown || reboot -p")
-                    }
                     TaskAction.MODE_POWERSAVE -> {
                         updateNotification("切换省电模式")
-                        ModeSwitcher().executePowercfgMode(ModeSwitcher.POWERSAVE)
+                        ModeSwitcher().executePowercfgMode(ModeSwitcher.POWERSAVE, context.packageName)
                     }
                     TaskAction.MODE_BALANCE -> {
                         updateNotification("切换均衡模式")
-                        ModeSwitcher().executePowercfgMode(ModeSwitcher.BALANCE)
+                        ModeSwitcher().executePowercfgMode(ModeSwitcher.BALANCE, context.packageName)
                     }
                     TaskAction.MODE_PERFORMANCE -> {
                         updateNotification("切换性能模式")
-                        ModeSwitcher().executePowercfgMode(ModeSwitcher.PERFORMANCE)
+                        ModeSwitcher().executePowercfgMode(ModeSwitcher.PERFORMANCE, context.packageName)
                     }
                     TaskAction.MODE_FAST -> {
                         updateNotification("切换极速模式")
-                        ModeSwitcher().executePowercfgMode(ModeSwitcher.FAST)
+                        ModeSwitcher().executePowercfgMode(ModeSwitcher.FAST, context.packageName)
                     }
                     TaskAction.FROZEN_APPS -> {
                         updateNotification("冻结偏见应用")
@@ -152,6 +102,11 @@ class TaskActionsExecutor(private val taskActions: ArrayList<TaskAction>, privat
             } catch (ex: Exception) {
                 Toast.makeText(context, "定时任务出错：" + ex.message, Toast.LENGTH_LONG).show()
             }
+        }
+
+        customTaskActions?.forEach {
+            updateNotification(it.Name)
+            keepShell.doCmdSync(it.Command)
         }
 
         if (!isCommonShell) {

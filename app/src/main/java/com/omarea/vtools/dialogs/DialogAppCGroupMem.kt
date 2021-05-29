@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.view.View
 import com.omarea.common.ui.DialogHelper
-import com.omarea.scene_mode.ModeSwitcher
 import com.omarea.vtools.R
 
 class DialogAppCGroupMem(var context: Activity, val current: String?, val iResultCallback: IResultCallback) {
@@ -44,7 +43,7 @@ class DialogAppCGroupMem(var context: Activity, val current: String?, val iResul
 
     fun show() {
         val view = context.layoutInflater.inflate(R.layout.dialog_scene_app_cgroup, null)
-        val dialog = DialogHelper.customDialogBlurBg(context, view)
+        val dialog = DialogHelper.customDialog(context, view)
 
         view.findViewById<View>(R.id.cgroup_default).setOnClickListener {
             dialog.dismiss()
@@ -61,6 +60,14 @@ class DialogAppCGroupMem(var context: Activity, val current: String?, val iResul
         view.findViewById<View>(R.id.cgroup_sys).setOnClickListener {
             dialog.dismiss()
             onItemClick("scene_sys")
+        }
+        view.findViewById<View>(R.id.cgroup_limit).setOnClickListener {
+            dialog.dismiss()
+            onItemClick("scene_limit")
+        }
+        view.findViewById<View>(R.id.cgroup_limit2).setOnClickListener {
+            dialog.dismiss()
+            onItemClick("scene_limit2")
         }
     }
 }

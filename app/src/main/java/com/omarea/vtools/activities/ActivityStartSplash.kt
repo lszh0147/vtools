@@ -10,12 +10,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.service.controls.templates.ControlButton
 import android.util.TypedValue
 import android.view.View
 import android.widget.Button
 import android.widget.CompoundButton
-import android.widget.Switch
 import androidx.core.app.ActivityCompat
 import androidx.core.content.PermissionChecker
 import com.omarea.Scene
@@ -27,7 +25,6 @@ import com.omarea.permissions.WriteSettings
 import com.omarea.store.SpfConfig
 import com.omarea.vtools.R
 import kotlinx.android.synthetic.main.activity_start_splash.*
-import kotlinx.android.synthetic.main.list_item_text.view.*
 import java.util.*
 
 class ActivityStartSplash : Activity() {
@@ -54,7 +51,7 @@ class ActivityStartSplash : Activity() {
      */
     private fun initContractAction() {
         val view = layoutInflater.inflate(R.layout.dialog_danger_agreement, null)
-        val dialog = DialogHelper.customDialogBlurBg(this, view, false)
+        val dialog = DialogHelper.customDialog(this, view, false)
         val btnConfirm = view.findViewById<Button>(R.id.btn_confirm)
         val agreement = view.findViewById<CompoundButton>(R.id.agreement)
         val timer = Timer()
@@ -82,7 +79,7 @@ class ActivityStartSplash : Activity() {
             if (!agreement.isChecked) {
                 return@setOnClickListener
             }
-            if (timeout > 0 && clickItems < 20) { // 连点20次允许跳过倒计时
+            if (timeout > 0 && clickItems < 10) { // 连点10次允许跳过倒计时
                 clickItems++
                 return@setOnClickListener
             }

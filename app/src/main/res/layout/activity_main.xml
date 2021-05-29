@@ -1,56 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="false"
     android:keepScreenOn="false">
 
-    <TabHost
-        android:id="@+id/configlist_tabhost"
+    <androidx.viewpager.widget.ViewPager
+        android:id="@+id/tab_content"
+        android:layout_above="@id/tab_list"
+        android:layout_marginTop="?actionBarSize"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="?android:actionBarSize"
-        android:focusable="false">
+        android:layout_height="match_parent" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
-
-            <FrameLayout
-                android:id="@android:id/tabcontent"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1">
-
-                <FrameLayout
-                    android:id="@+id/app_more"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-
-                <FrameLayout
-                    android:id="@+id/tab_home"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-
-                <FrameLayout
-                    android:visibility="gone"
-                    android:id="@+id/app_donate"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-            </FrameLayout>
-
-            <TabWidget
-                android:id="@android:id/tabs"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/tab_widget_background" />
-        </LinearLayout>
-    </TabHost>
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tab_list"
+        style="@style/SceneTabLayout" />
 
     <include
         layout="@layout/layout_app_bar"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-</FrameLayout>
+</RelativeLayout>

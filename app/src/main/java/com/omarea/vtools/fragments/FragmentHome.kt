@@ -2,7 +2,6 @@ package com.omarea.vtools.fragments
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Context.ACTIVITY_SERVICE
 import android.content.Intent
@@ -17,8 +16,8 @@ import android.widget.Toast
 import com.google.android.material.snackbar.Snackbar
 import com.omarea.Scene
 import com.omarea.common.shell.KeepShellPublic
-import com.omarea.common.shell.RootFile
 import com.omarea.common.ui.DialogHelper
+import com.omarea.common.ui.ProgressBarDialog
 import com.omarea.data.GlobalStatus
 import com.omarea.library.shell.CpuFrequencyUtils
 import com.omarea.library.shell.CpuLoadUtils
@@ -33,6 +32,7 @@ import com.omarea.utils.AccessibleServiceHelper
 import com.omarea.vtools.R
 import com.omarea.vtools.dialogs.DialogElectricityUnit
 import kotlinx.android.synthetic.main.fragment_home.*
+import kotlinx.coroutines.*
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.*
@@ -47,13 +47,25 @@ class FragmentHome : androidx.fragment.app.Fragment() {
     private var CpuFrequencyUtil = CpuFrequencyUtils()
     private lateinit var globalSPF: SharedPreferences
     private var timer: Timer? = null
-    private fun showMsg(msg: String) {
-        this.view?.let { Snackbar.make(it, msg, Snackbar.LENGTH_LONG).show() }
-    }
 
     private lateinit var spf: SharedPreferences
     private var myHandler = Handler(Looper.getMainLooper())
     private var cpuLoadUtils = CpuLoadUtils()
+
+    private suspend fun forceKSWAPD(mode: Int): String {
+        return withContext(Dispatchers.Default) {
+            SwapUtils(context!!).forceKswapd(mode)
+        }
+    }
+
+    private suspend fun dropCaches() {
+        return withContext(Dispatchers.Default) {
+            KeepShellPublic.doCmdSync(
+                    "sync\n" +
+                            "echo 3 > /proc/sys/vm/drop_caches\n" +
+                            "echo 1 > /proc/sys/vm/compact_memory")
+        }
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -63,16 +75,16 @@ class FragmentHome : androidx.fragment.app.Fragment() {
         globalSPF = context!!.getSharedPreferences(SpfConfig.GLOBAL_SPF, Context.MODE_PRIVATE)
 
         btn_powersave.setOnClickListener {
-            installConfig(ModeSwitcher.POWERSAVE, getString(R.string.power_change_powersave))
+            installConfig(ModeSwitcher.POWERSAVE)
         }
         btn_defaultmode.setOnClickListener {
-            installConfig(ModeSwitcher.BALANCE, getString(R.string.power_change_default))
+            installConfig(ModeSwitcher.BALANCE)
         }
         btn_gamemode.setOnClickListener {
-            installConfig(ModeSwitcher.PERFORMANCE, getString(R.string.power_change_game))
+            installConfig(ModeSwitcher.PERFORMANCE)
         }
         btn_fastmode.setOnClickListener {
-            installConfig(ModeSwitcher.FAST, getString(R.string.power_chagne_fast))
+            installConfig(ModeSwitcher.FAST)
         }
 
         if (!GlobalStatus.homeMessage.isNullOrEmpty()) {
@@ -84,35 +96,27 @@ class FragmentHome : androidx.fragment.app.Fragment() {
 
         home_clear_ram.setOnClickListener {
             home_raminfo_text.text = getString(R.string.please_wait)
-            Thread(Runnable {
-                KeepShellPublic.doCmdSync("sync\n" +
-                        "echo 3 > /proc/sys/vm/drop_caches\n" +
-                        "echo 1 > /proc/sys/vm/compact_memory")
-                myHandler.post {
-                    Scene.toast("缓存已清理...", Toast.LENGTH_SHORT)
-                }
-            }).start()
+            GlobalScope.launch(Dispatchers.Main) {
+                dropCaches()
+                Scene.toast("缓存已清理...", Toast.LENGTH_SHORT)
+            }
         }
 
         home_clear_swap.setOnClickListener {
             home_zramsize_text.text = getText(R.string.please_wait)
-            Scene.toast("开始回收少量内存(长按回收更多~)", Toast.LENGTH_SHORT)
-            Thread {
-                val result = SwapUtils(context!!).forceKswapd(1)
-                myHandler.post {
-                    Scene.toast(result, Toast.LENGTH_SHORT)
-                }
-            }.start()
+            GlobalScope.launch(Dispatchers.Main) {
+                Scene.toast("开始回收少量内存(长按回收更多~)", Toast.LENGTH_SHORT)
+                val result = forceKSWAPD(1)
+                Scene.toast(result, Toast.LENGTH_SHORT)
+            }
         }
 
         home_clear_swap.setOnLongClickListener {
             home_zramsize_text.text = getText(R.string.please_wait)
-            Thread {
-                val result = SwapUtils(context!!).forceKswapd(2)
-                myHandler.post {
-                    Scene.toast(result, Toast.LENGTH_SHORT)
-                }
-            }.start()
+            GlobalScope.launch(Dispatchers.Main) {
+                val result = forceKSWAPD(2)
+                Scene.toast(result, Toast.LENGTH_SHORT)
+            }
             true
         }
 
@@ -141,11 +145,7 @@ class FragmentHome : androidx.fragment.app.Fragment() {
                     msg.append(param.value)
                     msg.append("\n")
                 }
-                DialogHelper.animDialog(AlertDialog.Builder(context)
-                        .setTitle("调度器参数")
-                        .setMessage(msg.toString())
-                        .setPositiveButton(R.string.btn_confirm) { _, _ ->
-                        })
+                DialogHelper.alert(activity!!, "调度器参数", msg.toString())
             }
         }
 
@@ -182,12 +182,13 @@ class FragmentHome : androidx.fragment.app.Fragment() {
         maxFreqs.clear()
         minFreqs.clear()
         stopTimer()
-        timer = Timer()
-        timer!!.schedule(object : TimerTask() {
-            override fun run() {
-                updateInfo()
-            }
-        }, 0, 1500)
+        timer = Timer().apply {
+            schedule(object : TimerTask() {
+                override fun run() {
+                    updateInfo()
+                }
+            }, 0, 1500)
+        }
     }
 
     private var coreCount = -1
@@ -304,7 +305,11 @@ class FragmentHome : androidx.fragment.app.Fragment() {
         myHandler.post {
             try {
                 home_running_time.text = elapsedRealtimeStr()
-                home_battery_now.text = (batteryCurrentNow / globalSPF.getInt(SpfConfig.GLOBAL_SPF_CURRENT_NOW_UNIT, SpfConfig.GLOBAL_SPF_CURRENT_NOW_UNIT_DEFAULT)).toString() + "mA"
+                if (batteryCurrentNow != Long.MIN_VALUE && batteryCurrentNow != Long.MAX_VALUE) {
+                    home_battery_now.text = (batteryCurrentNow / globalSPF.getInt(SpfConfig.GLOBAL_SPF_CURRENT_NOW_UNIT, SpfConfig.GLOBAL_SPF_CURRENT_NOW_UNIT_DEFAULT)).toString() + "mA"
+                } else {
+                    home_battery_now.text = "--"
+                }
                 home_battery_capacity.text = "$batteryCapacity%"
                 home_battery_temperature.text = "${GlobalStatus.batteryTemperature}°C"
 
@@ -379,59 +384,67 @@ class FragmentHome : androidx.fragment.app.Fragment() {
         super.onPause()
     }
 
-    private fun installConfig(action: String, message: String) {
+    private fun toggleMode(modeSwitcher: ModeSwitcher, mode: String): Deferred<Unit> {
+        return GlobalScope.async {
+            context?.run {
+                if (modeSwitcher.modeConfigCompleted()) {
+                    modeSwitcher.executePowercfgMode(mode, packageName)
+                } else {
+                    CpuConfigInstaller().installOfficialConfig(context!!)
+                    modeSwitcher.executePowercfgMode(mode, packageName)
+                }
+            }
+        }
+    }
+
+    private fun installConfig(toMode: String) {
         val modeSwitcher = ModeSwitcher()
         val dynamic = AccessibleServiceHelper().serviceRunning(context!!) && spf.getBoolean(SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL, SpfConfig.GLOBAL_SPF_DYNAMIC_CONTROL_DEFAULT)
-        if (!dynamic && modeSwitcher.getCurrentPowerMode() == action) {
+        if (!dynamic && modeSwitcher.getCurrentPowerMode() == toMode) {
             modeSwitcher.setCurrent("", "")
             globalSPF.edit().putString(SpfConfig.GLOBAL_SPF_POWERCFG, "").apply()
-            DialogHelper.animDialog(AlertDialog.Builder(context)
-                    .setTitle("提示")
-                    .setMessage("需要重启手机才能恢复默认调度，是否立即重启？")
-                    .setNegativeButton(R.string.btn_cancel) { _, _ ->
-                    }
-                    .setPositiveButton(R.string.btn_confirm) { _, _ ->
-                        KeepShellPublic.doCmdSync("sync\nsleep 1\nreboot")
-                    })
-            setModeState()
+            myHandler.post {
+                DialogHelper.confirmBlur(this.activity!!,
+                        "提示",
+                        "需要重启手机才能恢复默认调度，是否立即重启？",
+                        {
+                            KeepShellPublic.doCmdSync("sync\nsleep 1\nsvc power reboot || reboot")
+                        },
+                        null)
+                setModeState()
+            }
             return
         }
-        if (modeSwitcher.modeConfigCompleted()) {
-            modeSwitcher.executePowercfgMode(action, context!!.packageName)
-        } else {
-            CpuConfigInstaller().installOfficialConfig(context!!)
-            modeSwitcher.executePowercfgMode(action)
-        }
-        setModeState()
-        showMsg(message)
-        maxFreqs.clear()
-        minFreqs.clear()
-        updateInfo()
-        if (dynamic) {
-            globalSPF.edit().putString(SpfConfig.GLOBAL_SPF_POWERCFG, "").apply()
-            DialogHelper.animDialog(
-                    AlertDialog
-                            .Builder(context)
-                            .setTitle("提示")
-                            .setMessage("“场景模式-动态响应”已被激活，你手动选择的模式随时可能被覆盖。\n\n如果你需要长期使用手动控制，请前往“场景模式”的设置界面关闭“动态响应”！")
-                            .setNegativeButton(R.string.btn_confirm) { _, _ ->
-                            }
-                            .setCancelable(false))
-        } else {
-            globalSPF.edit().putString(SpfConfig.GLOBAL_SPF_POWERCFG, action).apply()
-            if (!globalSPF.getBoolean(SpfConfig.GLOBAL_SPF_POWERCFG_FRIST_NOTIFY, false)) {
-                DialogHelper.animDialog(
-                        AlertDialog
-                                .Builder(context)
-                                .setTitle("提示")
-                                .setMessage("如果你已允许Scene自启动，手机重启后，Scene还会自动激活刚刚选择的模式。\n\n如果需要恢复系统默认调度，请再次点击，然后重启手机！")
-                                .setNegativeButton(R.string.btn_confirm) { _, _ ->
-                                }
-                                .setPositiveButton(R.string.btn_dontshow) { _, _ ->
-                                    globalSPF.edit().putBoolean(SpfConfig.GLOBAL_SPF_POWERCFG_FRIST_NOTIFY, true).apply()
-                                }
-                                .setCancelable(false))
+
+        val progressBarDialog = ProgressBarDialog(this.activity!!, "home-mode-switch")
+        progressBarDialog.showDialog(getString(R.string.please_wait))
+
+        GlobalScope.launch(Dispatchers.Main) {
+            toggleMode(modeSwitcher, toMode).await()
+
+            setModeState()
+            maxFreqs.clear()
+            minFreqs.clear()
+            updateInfo()
+            if (dynamic) {
+                globalSPF.edit().putString(SpfConfig.GLOBAL_SPF_POWERCFG, "").apply()
+                DialogHelper.alert(activity!!,
+                        "提示",
+                        "“场景模式-动态响应”已被激活，你手动选择的模式随时可能被覆盖。\n\n如果你需要长期使用手动控制，请前往“功能”菜单-“性能界面”界面关闭“动态响应”！")
+            } else {
+                globalSPF.edit().putString(SpfConfig.GLOBAL_SPF_POWERCFG, toMode).apply()
+                if (!globalSPF.getBoolean(SpfConfig.GLOBAL_SPF_POWERCFG_FRIST_NOTIFY, false)) {
+                    DialogHelper.confirm(activity!!,
+                            "提示",
+                            "如果你已允许Scene自启动，手机重启后，Scene还会自动激活刚刚选择的模式。\n\n如果需要恢复系统默认调度，请再次点击，然后重启手机！",
+                            DialogHelper.DialogButton(getString(R.string.btn_confirm)),
+                            DialogHelper.DialogButton(getString(R.string.btn_dontshow), {
+                                globalSPF.edit().putBoolean(SpfConfig.GLOBAL_SPF_POWERCFG_FRIST_NOTIFY, true).apply()
+                            })).setCancelable(false)
+                }
             }
+
+            progressBarDialog.hideDialog()
         }
     }
 }

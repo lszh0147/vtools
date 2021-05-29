@@ -8,7 +8,13 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Checkable
 import android.widget.CompoundButton
+import android.widget.Toast
+import com.omarea.common.model.SelectItem
+import com.omarea.common.shared.FileWrite
+import com.omarea.common.ui.DialogItemChooser2
 import com.omarea.data.EventType
+import com.omarea.krscript.executor.ExtractAssets
+import com.omarea.model.CustomTaskAction
 import com.omarea.model.TaskAction
 import com.omarea.model.TriggerInfo
 import com.omarea.scene_mode.ModeSwitcher
@@ -16,6 +22,9 @@ import com.omarea.scene_mode.TriggerManager
 import com.omarea.store.TriggerStorage
 import com.omarea.vtools.R
 import kotlinx.android.synthetic.main.activity_trigger.*
+import java.io.File
+import java.io.FilenameFilter
+import java.net.URLDecoder
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -62,24 +71,68 @@ class ActivityTrigger : ActivityBase() {
         oneOf(trigger_power_connected, trigger_power_disconnected)
 
         oneOf(task_standby_on, task_standby_off)
-        oneOf(task_airplane_mode_on, task_airplane_mode_off)
-        oneOf(task_wifi_on, task_wifi_off)
-        oneOf(task_gps_on, task_gps_off)
-        oneOf(task_gprs_on, task_gprs_off)
         oneOf(task_zen_mode_on, task_zen_mode_off)
-        oneOf(task_power_off, task_power_reboot)
-
-        oneOf(task_compile_speed, task_compile_everything)
 
         // 更新选中状态
         updateUI()
-
-        // dex2oat
-        task_compile.visibility = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) View.VISIBLE else View.GONE
         // 勿扰模式
         task_zen_mode.visibility = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) View.VISIBLE else View.GONE
         // 待机模式
         task_standby_mode.visibility = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) View.VISIBLE else View.GONE
+
+        // 自定义动作点击
+        task_custom_edit.setOnClickListener {
+            customEditClick()
+        }
+    }
+
+    private fun customEditClick() {
+        ExtractAssets(this).extractResources("custom-command")
+
+        val dirPath = FileWrite.getPrivateFilePath(this, "custom-command")
+        val dir = File(dirPath)
+        if (dir.exists()) {
+            val files = dir.listFiles(object : FilenameFilter {
+                override fun accept(dir: File?, name: String?): Boolean {
+                    return name?.endsWith(".sh") == true
+                }
+            })
+
+            val fileNames = files?.map {
+                SelectItem().apply {
+                    val name = URLDecoder.decode(it.name)
+                    title = name
+                    value = it.absolutePath
+                    selected = triggerInfo.customTaskActions?.find { it.Name == name } != null
+                }
+            }?.sortedBy { it.title }
+            val selectedItems = ArrayList<SelectItem>()
+            triggerInfo.customTaskActions?.forEach { item ->
+                val name = item.Name
+                val r = fileNames?.find { it.title == name }
+                if (r != null) {
+                    selectedItems.add(r)
+                }
+            }
+
+            if (fileNames != null && fileNames.size > 0) {
+                DialogItemChooser2(themeMode.isDarkMode, ArrayList(fileNames), ArrayList(selectedItems), true, object : DialogItemChooser2.Callback {
+                    override fun onConfirm(selected: List<SelectItem>, status: BooleanArray) {
+                        triggerInfo.customTaskActions = ArrayList(selected.map {
+                            CustomTaskAction().apply {
+                                Name = it.title
+                                Command = "sh '" + it.value + "'"
+                            }
+                        })
+                        updateUI()
+                    }
+                }).setTitle("选择要执行的命令").show(supportFragmentManager, "custom-action-picker")
+            } else {
+                Toast.makeText(this, "你还没创建自定义命令", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "你还没创建自定义命令", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun updateUI() {
@@ -104,27 +157,20 @@ class ActivityTrigger : ActivityBase() {
             taskActions?.run {
                 task_standby_on.isChecked = contains(TaskAction.STANDBY_MODE_ON)
                 task_standby_off.isChecked = contains(TaskAction.STANDBY_MODE_OFF)
-                task_airplane_mode_on.isChecked = contains(TaskAction.AIRPLANE_MODE_ON)
-                task_airplane_mode_off.isChecked = contains(TaskAction.AIRPLANE_MODE_OFF)
-                task_wifi_on.isChecked = contains(TaskAction.WIFI_ON)
-                task_wifi_off.isChecked = contains(TaskAction.WIFI_OFF)
-                task_gps_on.isChecked = contains(TaskAction.GPS_ON)
-                task_gps_off.isChecked = contains(TaskAction.GPS_OFF)
-                task_gprs_on.isChecked = contains(TaskAction.GPRS_ON)
-                task_gprs_off.isChecked = contains(TaskAction.GPRS_OFF)
                 task_zen_mode_on.isChecked = contains(TaskAction.ZEN_MODE_ON)
                 task_zen_mode_off.isChecked = contains(TaskAction.ZEN_MODE_OFF)
-                task_fstrim.isChecked = contains(TaskAction.FSTRIM)
-                task_power_off.isChecked = contains(TaskAction.POWER_OFF)
-                task_power_reboot.isChecked = contains(TaskAction.POWER_REBOOT)
-                task_compile_speed.isChecked = contains(TaskAction.COMPILE_SPEED)
-                task_compile_everything.isChecked = contains(TaskAction.COMPILE_EVERYTHING)
 
                 task_mode_powersave.isChecked = contains(TaskAction.MODE_POWERSAVE)
                 task_mode_balance.isChecked = contains(TaskAction.MODE_BALANCE)
                 task_mode_performance.isChecked = contains(TaskAction.MODE_PERFORMANCE)
                 task_mode_fast.isChecked = contains(TaskAction.MODE_FAST)
             }
+
+            customTaskActions?.run {
+                val str = this.map { it.Name }.toTypedArray().joinToString("\n\n").trim()
+                task_custom_actions.text = str
+            }
+
             task_mode_switch.visibility = if (ModeSwitcher().modeConfigCompleted()) View.VISIBLE else View.GONE
         }
     }
@@ -181,28 +227,13 @@ class ActivityTrigger : ActivityBase() {
         triggerInfo.taskActions = ArrayList<TaskAction>().apply {
             task_standby_on.isChecked && add(TaskAction.STANDBY_MODE_ON)
             task_standby_off.isChecked && add(TaskAction.STANDBY_MODE_OFF)
-            task_airplane_mode_on.isChecked && add(TaskAction.AIRPLANE_MODE_ON)
-            task_airplane_mode_off.isChecked && add(TaskAction.AIRPLANE_MODE_OFF)
-            task_wifi_on.isChecked && add(TaskAction.WIFI_ON)
-            task_wifi_off.isChecked && add(TaskAction.WIFI_OFF)
-            task_gps_on.isChecked && add(TaskAction.GPS_ON)
-            task_gps_off.isChecked && add(TaskAction.GPS_OFF)
-            task_gprs_on.isChecked && add(TaskAction.GPRS_ON)
-            task_gprs_off.isChecked && add(TaskAction.GPRS_OFF)
             task_zen_mode_on.isChecked && add(TaskAction.ZEN_MODE_ON)
             task_zen_mode_off.isChecked && add(TaskAction.ZEN_MODE_OFF)
-            task_fstrim.isChecked && add(TaskAction.FSTRIM)
-            task_compile_speed.isChecked && add(TaskAction.COMPILE_SPEED)
-            task_compile_everything.isChecked && add(TaskAction.COMPILE_EVERYTHING)
 
             task_mode_powersave.isChecked && add(TaskAction.MODE_POWERSAVE)
             task_mode_balance.isChecked && add(TaskAction.MODE_BALANCE)
             task_mode_performance.isChecked && add(TaskAction.MODE_PERFORMANCE)
             task_mode_fast.isChecked && add(TaskAction.MODE_FAST)
-
-            // 关机和重启动作放在最后
-            task_power_off.isChecked && add(TaskAction.POWER_OFF)
-            task_power_reboot.isChecked && add(TaskAction.POWER_REBOOT)
         }
 
         triggerInfo.events = ArrayList<EventType>().apply {

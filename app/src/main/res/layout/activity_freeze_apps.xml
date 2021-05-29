@@ -27,13 +27,13 @@
                 android:layout_height="0dp"
                 android:layout_weight="1">
 
-                <LinearLayout
+                <RelativeLayout
                     android:id="@+id/tab_freeze_apps"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical">
+                    android:layout_height="match_parent">
 
                     <LinearLayout
+                        android:id="@+id/freeze_toolbar"
                         style="@style/ListCardItem"
                         android:alpha="0.9"
                         android:orientation="horizontal">
@@ -48,7 +48,7 @@
                                 style="@style/textSmall"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="偏见应用"
+                                android:text="小提示"
                                 android:textColor="?android:colorAccent" />
 
                             <TextView
@@ -56,15 +56,27 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="5dp"
-                                android:text="应用偏见需要激活场景模式(辅助服务)，才能自动冻结应用" />
+                                android:text="应用偏见功能需要激活场景模式(辅助服务)，才能自动冻结应用" />
                         </LinearLayout>
+
+                        <ImageButton
+                            android:id="@+id/freeze_add"
+                            style="?android:buttonBarButtonStyle"
+                            android:src="@drawable/kr_plus"
+                            android:layout_marginStart="8dp"
+                            android:scaleType="centerInside"
+                            android:padding="5dp"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_gravity="center_vertical"
+                            android:tint="?android:colorAccent" />
 
                         <ImageButton
                             android:id="@+id/freeze_menu"
                             style="?android:buttonBarButtonStyle"
                             android:layout_width="28dp"
                             android:layout_height="28dp"
-                            android:layout_gravity="center"
+                            android:layout_gravity="center_vertical"
                             android:layout_marginStart="6dp"
                             android:padding="4dp"
                             android:scaleType="centerInside"
@@ -73,9 +85,10 @@
                     </LinearLayout>
 
                     <LinearLayout
+                        android:layout_below="@+id/freeze_toolbar"
+                        android:layout_alignParentBottom="true"
                         style="@style/ListCardItemLast"
-                        android:layout_height="0dp"
-                        android:layout_weight="1"
+                        android:layout_height="match_parent"
                         android:alpha="0.9"
                         android:focusable="true"
                         android:focusableInTouchMode="true"
@@ -104,7 +117,7 @@
                             android:layout_weight="1"
                             android:numColumns="4" />
                     </LinearLayout>
-                </LinearLayout>
+                </RelativeLayout>
 
                 <com.omarea.common.ui.OverScrollView
                     android:id="@+id/tab_freeze_settings"
@@ -127,7 +140,6 @@
                                 <com.omarea.ui.HelpIcon
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_marginEnd="5dp"
                                     app:text="冻结应用时不隐藏桌面图标，而仅仅将其置灰（与应用管理中的[暂停使用]效果相同），从而避免冻结应用时破坏桌面布局，此功能需要Android P+" />
 
                                 <Switch
@@ -135,7 +147,7 @@
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
-                                    android:text="保留图标" />
+                                    android:text="保留应用图标" />
 
                             </LinearLayout>
 
@@ -149,7 +161,6 @@
                                 <com.omarea.ui.HelpIcon
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_marginEnd="5dp"
                                     app:text="Scene作为Xposed模块激活[且被允许自启动]后，以下桌面可直接打开冻结的应用：\n一加桌面、一加Hydrogen桌面、一加氢桌面\nLawnchair测试版、Lawnchair魔趣版\nMIUI桌面、POCO桌面、MIUI全局搜索\nLineageOS Trebuchet\n系统设置、Pixel 启动器\n\n开启授权通融后，则所有应用都可以打开冻结的应用" />
 
                                 <Switch
@@ -173,7 +184,6 @@
                                 <com.omarea.ui.HelpIcon
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_marginEnd="5dp"
                                     app:text="点击偏见列表中的应用时打开应用，而不是切换冻结状态" />
 
                                 <Switch
@@ -194,7 +204,6 @@
                                 <com.omarea.ui.HelpIcon
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_marginEnd="5dp"
                                     app:text="有未添加快捷方式到桌面的偏见应用时，弹出添加快捷方式提示" />
 
                                 <Switch
@@ -217,7 +226,6 @@
                                 <com.omarea.ui.HelpIcon
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_marginEnd="5dp"
                                     app:text="离开应用界面超过此时间后冻结，0表示不限制。锁屏1分钟后自动冻结所有偏见应用，不受此设置影响！" />
 
                                 <TextView
@@ -265,7 +273,6 @@
                                 <com.omarea.ui.HelpIcon
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_marginEnd="5dp"
                                     app:text="能同时处于解冻状态的偏见应用最大数量，0表示不限制" />
 
                                 <TextView
@@ -314,7 +321,6 @@
                                 <com.omarea.ui.HelpIcon
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_marginEnd="5dp"
                                     app:text="息屏后冻结偏见应用的延迟时间" />
 
                                 <TextView
@@ -351,6 +357,31 @@
                                     android:text="0"
                                     android:textAlignment="center" />
                             </LinearLayout>
+                        </LinearLayout>
+
+
+                        <LinearLayout style="@style/ListCardItem">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <com.omarea.ui.HelpIcon
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    app:text="在桌面显示“应用偏见”管理界面快捷入口" />
+
+                                <Switch
+                                    android:id="@+id/freeze_quick_entry"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="桌面快捷入口" />
+
+                            </LinearLayout>
+
                         </LinearLayout>
                     </LinearLayout>
                 </com.omarea.common.ui.OverScrollView>
